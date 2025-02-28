@@ -30,6 +30,9 @@ DEBUG = os.environ['DEBUG']
 ALLOWED_HOSTS = os.environ['DJANGO_ALLOWED_HOSTS'].split(" ")
 CSRF_TRUSTED_ORIGINS = os.environ['CSRF_TRUSTED_ORIGINS'].split(" ")
 
+LOGIN_REDIRECT_URL = "index"
+LOGOUT_REDIRECT_URL = "index"  # new
+
 # Application definition
 
 INSTALLED_APPS = [
