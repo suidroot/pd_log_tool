@@ -10,7 +10,7 @@ services:
       - stack.env
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod", "-U", "pdlog"]
+      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod", "-U", "police_log"]
       interval: 30s
       timeout: 60s
       retries: 5

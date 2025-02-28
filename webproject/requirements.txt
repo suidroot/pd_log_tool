@@ -1,3 +1,4 @@
 Django
 decouple
-mysqlclient
+psycopg[binary]
+sqlparse
