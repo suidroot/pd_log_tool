@@ -4,4 +4,4 @@ db.sqlite3
 .env
 *.pyc
 example_data
-*.csv
+*.csvstack.env

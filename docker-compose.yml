@@ -7,7 +7,7 @@ services:
     volumes:
       - data:/var/lib/mysql
     env_file:
-      - .env
+      - stack.env
     ports:
       - "3306:3306"
     healthcheck:
@@ -25,7 +25,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - stack.env
     depends_on:
       db:
         condition: service_healthy
