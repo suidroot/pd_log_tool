@@ -29,7 +29,6 @@ SECRET_KEY = os.environ['SECRET_KEY']
 DEBUG = os.environ['DEBUG']
 ALLOWED_HOSTS = os.environ['DJANGO_ALLOWED_HOSTS'].split(" ")
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS").split(" ")
-# CSRF_TRUSTED_ORIGINS = ["https://pdlog.home.the-collective.net"]
 
 
 LOGIN_REDIRECT_URL = "index"
