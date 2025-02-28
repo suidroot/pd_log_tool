@@ -1,0 +1,15 @@
+# TODO
+- implement municipality field
+  - officer tie to muni
+- determine single table for both types or two different tables
+- Combined logs query
+- Authentication
+  - public site with no names
+  - private site authenticated with names
+  - insert permission
+- map results on street map
+- search
+    - export CSV results
+- write about
+- create last update model
+- add south portland

@@ -1,0 +1,22 @@
+{% extends "log_query_site/base.html" %}
+
+{% block title %}Arrest Log Search Results{% endblock %}
+
+{% block meta_description %}Arrest Log Search Results{% endblock %}
+
+{% block meta_keywords %}portland, police, maine{% endblock %}
+
+{% block content %}
+
+<div class="logout_container", style='text-align:center';>
+Are you Sure you want to log out?
+<form action="{% url 'logout' %}" method="post">
+    {% csrf_token %}
+    <button type="submit">Yes</button>
+</form>
+<form action="/" method="GET">
+    <button type="submit">No</button>
+</form>
+</div>
+
+{% endblock %}

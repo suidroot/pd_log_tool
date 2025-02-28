@@ -1,0 +1,49 @@
+{% extends "log_query_site/base.html" %}
+
+{% block title %}Arrest Log Search Results{% endblock %}
+
+{% block meta_description %}Arrest Log Search Results{% endblock %}
+
+{% block meta_keywords %}portland, police, maine{% endblock %}
+
+{% block content %}
+
+<p>There are {{count}} Results</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Record Type</th>
+            <th>Dispatch Number</th>
+            <th>Arrest Date</th>
+            <th>Call Stop</th>
+            <th>Arrestee</th>
+            <th>Call Type</th>
+            <th>Charges</th>
+            <th>Arrest Type</th>
+            <th>Officer</th>
+            <th>Address</th>
+        </tr>
+    </thead>
+    <tbody>
+{% for result in results %}
+<tr>
+    <td>{{result.record_type}}</td>
+    <td>{{result.dispatch_number}}</td>
+    <td>{{result.datetime_start}}</td>
+    <td>{{result.datetime_stop}}</td>
+    <td>{{result.arrestee}}</td>
+    <td>{{result.dispatch_type}}</td>
+    <td>{% for charge in result.charge.all %}
+        {{charge}}<br>
+        {% endfor %}
+    </td>
+    <td>{{result.arrest_type}}</td>
+    <td>{{result.officer}}</td>
+    <td>{{result.address}}</td>
+</tr>
+{% endfor %}
+
+</tbody>
+</table>
+{% endblock %}

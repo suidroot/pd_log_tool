@@ -1,0 +1,7 @@
+.DS_Store
+Log-DB-Tool.code-workspace
+db.sqlite3
+.env
+*.pyc
+example_data
+*.csv

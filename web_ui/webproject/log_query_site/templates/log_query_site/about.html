@@ -1,0 +1,25 @@
+{% extends "log_query_site/base.html" %}
+
+{% block title %}About{% endblock %}
+
+{% block meta_description %}PWM Police calls{% endblock %}
+
+{% block meta_keywords %}portland, police, maine{% endblock %}
+
+{% block content %}
+
+This is a tool to search and archive to Police logs
+
+<div class="about_counts_container", style='text-align:center';>
+
+<table>
+<tr><td>All Records</td><td>{{counts.all_records}}</td></tr>
+<tr><td>Municipalities</td><td>{{counts.municipalities}}</td></tr>
+<tr><td>Arrest Types</td><td>{{counts.arrest_types}}</td></tr>
+<tr><td>Officers</td><td>{{counts.officers}}</td></tr>
+<tr><td>Arrestees</td><td>{{counts.arrestees}}</td></tr>
+<tr><td>Charges</td><td>{{counts.charges}}</td></tr>
+<tr><td>Dispatch Types</td><td>{{counts.dispatch_types}}</td></tr>
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "log_query_site/base.html" %}
+
+{% block title %}Police Log Search{% endblock %}
+
+{% block meta_description %}PWM Police calls{% endblock %}
+
+{% block meta_keywords %}portland, police, maine{% endblock %}
+
+{% block content %}
+
+<h1>Police Log Search</h1>
+
+<form action="/results/" method="post">
+    {% csrf_token %}
+    <fieldset>
+        <div id="number_search" name="number_search" style="border:1px solid black;">
+            <p>Search a Dispatch number: <input type="text" id="dispatch_number" name="dispatch_number"></p>
+        </div>
+        <p>OR</p>
+        <div id="detail_search" name="detail_search" style="border:1px solid black;">
+            <p>
+                Search by Record Type:<br>
+                <input type="radio" id="all" name="record_type" value="all" checked>
+                <label for="all">All</label><br>
+                {% for record_type in record_types %}
+                <input type="radio" id="{{record_type.id}}" name="record_type" value="{{record_type.id}}">
+                <label for="{{record_type.id}}">{{record_type.display_text}}</label><br>
+                {% endfor %}
+            </p>
+
+            <table>
+            <tr>
+                <td><p>Search Arrest or Dispatch Start Date</p></td>
+                <td><p>(Dispatch Only) Search Dispatch End Date</p></td>
+            </tr>
+            <tr>
+                <td>
+                    <p>Date Begin: <input type="datetime-local" id="datetime_start" name="datetime_start_start"></p>
+                    <p>Date End: <input type="datetime-local" id="datetime_start" name="datetime_start_stop"></p>
+                </td>
+                <td>
+                    <p>Date Begin: <input type="datetime-local" id="datetime_stop" name="datetime_stop_start"></p>
+                    <p>Date End: <input type="datetime-local" id="datetime_stop" name="datetime_stop_stop"></p>
+                </td>
+            </tr>
+            </table>
+            <p><label for="dispatch_type">(Dispatch Only) Dispatch Type:</label>
+                <select name="dispatch_type" id="dispatch_type">
+                    <option value=""></li>
+                    {% for dispatch_type in dispatch_types %}
+                    <option value="{{ dispatch_type.id }}">{{ dispatch_type.display_text }}</li>
+                    {% endfor %}
+                </select>
+            </p>
+
+            <p><label for="arrest_type">(Arrest Only) Arrest Type:</label>
+                <select name="arrest_type" id="arrest_type">
+                    <option value=""></option>
+                    {% for arrest_type in arrest_types %}
+                    <option value="{{ arrest_type.id }}">{{ arrest_type.display_text }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+            
+            <p><label for="charge">(Arrest Only) Charge:</label>
+                <select name="charge" id="id_charge" multiple>
+                    <option value=""></option>
+                    {% for charge in charges %}
+                    <option value="{{ charge.id }}">{{ charge.display_text }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+
+            <p><label for="arrestee">(Arrest Only) Arrestee:</label>
+                <select name="arrestee" id="arrestee">
+                    <option value=""></option>
+                    {% for arrestee in arrestees %}
+                    <option value="{{ arrestee.id }}">{{ arrestee.lastname }}, {{ arrestee.firstname }} {{ arrestee.middlename }}</option>
+                    {% endfor %}
+                </select>
+            </p>
+
+            <p><label for="officer">Officers:</label>
+                <select name="officer" id="officer">
+                    <option value=""></li>
+                    {% for officer in officers %}
+                    <option value="{{ officer.id }}">{{ officer.lastname }}, {{ officer.firstname }} {{ officer.middlename }}</li>
+                    {% endfor %}
+                </select>
+            </p>
+            <p>Street address: <input type="text" id="address" name="address"></p>
+            <p>Result Limit: <input type="number" id="result_limit" name="result_limit", value="50"></p>
+            <p>
+                Sort by:<br>
+                <input type="radio" id="start_date" name="sort_radio" value="start_date" checked>
+                <label for="start_date">Start Date</label><br>
+                <input type="radio" id="stop_date" name="sort_radio" value="stop_date">
+                <label for="stop_date">Stop Date</label><br>
+                <input type="radio" id="officer" name="sort_radio" value="officer">
+                <label for="officer">Officer</label><br>
+                <input type="radio" id="dispatch_type" name="sort_radio" value="dispatch_type">
+                <label for="dispatch_type">(Dispatch Only) Dispatch Type</label><br>
+                <input type="radio" id="arrestee" name="sort_radio" value="arrestee">
+                <label for="arrestee">(Arrest Only) Arrestee</label><br>
+            </p>
+
+        </div>
+    </fieldset>
+    <input type="submit" value="Search"> <input type="reset"> 
+</form>
+{% endblock %}
