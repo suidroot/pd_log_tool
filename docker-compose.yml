@@ -1,19 +1,20 @@
 version: '3'
 services:
   db:
-    image: mysql:latest
-    container_name: police_logs_mariadb
+    image: postgres:14
+    container_name: police_logs_postgres
     restart: always
     volumes:
-      - data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data/
     env_file:
       - stack.env
-    ports:
-      - "3306:3306"
+
     healthcheck:
-      test: ["CMD", "mysql", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}", "-e", "SELECT 1"]
-      timeout: 20s
-      retries: 10
+      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
   
   backend:
     build: 
@@ -30,4 +31,4 @@ services:
       db:
         condition: service_healthy
 volumes:
-  data:
+  postgres_data:
