@@ -37,7 +37,9 @@ def about_page(request):
     dispatch_type = RecordType.objects.get(display_text='Dispatch')
     arrest_type = RecordType.objects.get(display_text='Arrest')
     most_recent_dispatch = PoliceLog.objects.filter(record_type=dispatch_type).order_by('-datetime_start')[0]
+    first_dispatch = PoliceLog.objects.filter(record_type=dispatch_type).order_by('datetime_start')[0]
     most_recent_arrest = PoliceLog.objects.filter(record_type=arrest_type).order_by('-datetime_start')[0]
+    first_arrest = PoliceLog.objects.filter(record_type=arrest_type).order_by('datetime_start')[0]
 
     
     counts = {
@@ -49,7 +51,10 @@ def about_page(request):
         'charges' : charges,
         'dispatch_types' : dispatch_types,
         'latest_dispatch_date' : most_recent_dispatch.datetime_start,
+        'first_dispatch_date' : first_dispatch.datetime_start,
         'latest_arrest_date' : most_recent_arrest.datetime_start,
+        'first_arrest_date' : first_arrest.datetime_start,
+
     }
 
     context = {"counts" : counts}
