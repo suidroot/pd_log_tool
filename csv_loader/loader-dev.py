@@ -16,8 +16,8 @@ __email__ = "locutus@the-collective.net"
 __status__ = "Development"
 
 class config:
-    dispatch_url = 'http://ronara.home.lab:8000/add/dispatch/'
-    arrest_url = 'http://ronara.home.lab:8000/add/arrest/'
+    dispatch_url = 'http://localhost:8000/add/dispatch/'
+    arrest_url = 'http://localhost:8000/add/arrest/'
     debug = False
     error_file_suffix = "error.log"
     current_error_log = ""
