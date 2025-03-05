@@ -71,7 +71,12 @@
                 </select>
             </p>
 
-            <p><label for="arrestee">(Arrest Only) Arrestee:</label>
+            <p>
+                <label for="arrestee">(Arrest Only) Search Arrestee Last Name:</label>
+                <input type="text" id="arrestee_last" name="arrestee_last">
+            </p>
+            or
+            <p><label for="arrestee">(Arrest Only) Select Arrestee:</label>
                 <select name="arrestee" id="arrestee">
                     <option value=""></option>
                     {% for arrestee in arrestees %}

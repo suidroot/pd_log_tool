@@ -34,6 +34,11 @@ def about_page(request):
 
     all_count = PoliceLog.objects.count()
 
+    dispatch_type = RecordType.objects.get(display_text='Dispatch')
+    arrest_type = RecordType.objects.get(display_text='Arrest')
+    most_recent_dispatch = PoliceLog.objects.filter(record_type=dispatch_type).order_by('-datetime_start')[0]
+    most_recent_arrest = PoliceLog.objects.filter(record_type=arrest_type).order_by('-datetime_start')[0]
+
     
     counts = {
         "all_records" : all_count,
@@ -43,6 +48,8 @@ def about_page(request):
         'arrestees' : arrestees,
         'charges' : charges,
         'dispatch_types' : dispatch_types,
+        'latest_dispatch_date' : most_recent_dispatch.datetime_start,
+        'latest_arrest_date' : most_recent_arrest.datetime_start,
     }
 
     context = {"counts" : counts}
@@ -153,6 +160,7 @@ def search_results(request):
             charge = None
 
         arrestee_id = request.POST.get("arrestee", None)
+        arrestee_last = request.POST.get("arrestee_last", None)
         officer_id = request.POST.get("officer", None)
         arrest_type_id = request.POST.get("arrest_type", None)
         record_type = request.POST.get("record_type", None)
@@ -175,7 +183,10 @@ def search_results(request):
         if record_type != "all":
             results = results.filter(record_type=record_type)
 
-        if arrestee_id:
+        if arrestee_last:
+            arrestee_id = Arrestee.objects.filter(lastname=arrestee_last.title())
+            results = results.filter(arrestee__in=arrestee_id)
+        elif arrestee_id:
             results = results.filter(arrestee=arrestee_id)
 
         if charge:
@@ -188,7 +199,7 @@ def search_results(request):
             results = results.filter(officer=officer_id)
 
         if address:
-            results = results.filter(address__contains=address)
+            results = results.filter(address__icontains=address)
 
         # Sort Data
         if request.POST["sort_radio"] == "datetime_start":
