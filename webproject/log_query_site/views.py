@@ -28,7 +28,6 @@ def about_page(request):
     officers = Officer.objects.count()
     arrestees = Arrestee.objects.count()
     charges = Charge.objects.count()
-    record_types = RecordType.objects.count()
     dispatch_types = DispatchType.objects.count()
     officers = Officer.objects.count()
 

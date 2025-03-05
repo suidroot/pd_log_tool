@@ -160,6 +160,16 @@ class Charge(models.Model):
 
     def __str__(self):
         return f"{self.display_text}"
+    
+    @staticmethod
+    def clean_name(text):
+
+        text = text.replace("\n", "")
+        text = text.strip()
+        clean_text = text.title()
+
+        return clean_text
+
 
     @classmethod
     def search_by_name(cls, display_text):
@@ -169,14 +179,14 @@ class Charge(models.Model):
         elif cls.objects.filter(display_text=display_text).count() > 1:
             results = None
         else:
-            query_return = cls.objects.filter(display_text=display_text)
-            return query_return[0]
+            query_return = cls.objects.get(display_text=display_text)
+            return query_return
 
         return results
 
     @classmethod
     def get_or_create(cls, display_text):
-        display_text = display_text.title()
+        display_text = cls.clean_name(display_text)
 
         obj = cls.search_by_name(display_text)
 
@@ -187,7 +197,7 @@ class Charge(models.Model):
 
     @classmethod
     def create(cls, display_text):
-        display_text = display_text.title()
+        display_text = cls.clean_name(display_text)
         obj = cls(display_text=display_text)
         obj.save()
         return obj
@@ -352,6 +362,9 @@ class PoliceLog(models.Model):
     address = models.TextField() # Violation Location
     date_added = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+
+        return f"{self.id} {self.datetime_start} {self.date_added}"
 
     @classmethod
     def create_dispatch(cls, media_log):
