@@ -6,5 +6,6 @@
 - map results on street map
 - search
     - export CSV results
-- create last update model
 - add south portland
+- fix loader for 2021 and 2020
+- convert earlier arrest logs
