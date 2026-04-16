@@ -50,6 +50,7 @@ def about_page(request):
     dispatch_types = DispatchType.objects.count()
 
     all_count = PoliceLog.objects.count()
+    geocoded_count = PoliceLog.objects.filter(latitude__isnull=False, longitude__isnull=False).count()
 
     dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
     arrest_type = RecordType.objects.filter(display_text='Arrest').first()
@@ -59,6 +60,7 @@ def about_page(request):
 
     counts = {
         "all_records": all_count,
+        "geocoded_records": geocoded_count,
         'municipalities': municipalities,
         'arrest_types': arrest_types,
         'officers': officers,
@@ -267,5 +269,16 @@ def search_results(request):
         results = results[:limit]
         web_page = "log_query_site/search_results.html"
 
-    context = {"results": results, "count": count}
+    map_points = []
+    for r in results:
+        if r.latitude and r.longitude:
+            map_points.append({
+                "lat": r.latitude,
+                "lon": r.longitude,
+                "label": str(r.record_type),
+                "address": r.address,
+                "date": str(r.datetime_start)[:10] if r.datetime_start else "",
+            })
+
+    context = {"results": results, "count": count, "map_points_json": json.dumps(map_points)}
     return render(request, web_page, context)

@@ -365,6 +365,8 @@ class PoliceLog(models.Model):
     charge = models.ManyToManyField(Charge) # can be multiple
     arrest_type = models.ForeignKey(ArrestType, on_delete=models.DO_NOTHING, null=True)
     address = models.TextField() # Violation Location
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     date_added = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
