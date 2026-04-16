@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-''' Name of Script '''
+'''  Name of Script '''
 
 import csv
 import json
@@ -51,15 +51,15 @@ def split_name(text_name):
             middle = ''
     
     except ValueError:
-        full_name = text_name.split(' ')
-        if len(full_name) < 3:
+        full_name = text_name.split()
+        if len(full_name) >= 2:
             first = full_name[0]
             last = full_name[1]
-            middle = ''
+            middle = full_name[2] if len(full_name) > 2 else ''
         else:
-            first = full_name[0]
-            last = full_name[1]
-            middle = full_name[2]
+            first = full_name[0] if full_name else text_name
+            last = 'unknown'
+            middle = ''
 
     name_dict = {
         'firstname' : first,

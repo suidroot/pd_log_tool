@@ -21,7 +21,8 @@ from .models import (
 MAX_RESULTS = 100
 
 _ARREST_REQUIRED_FIELDS = ['arrestee', 'arrest_date', 'charge', 'arrest_type', 'officer', 'address']
-_DISPATCH_REQUIRED_FIELDS = ['dispatch_number', 'dispatch_start', 'dispatch_stop', 'dispatch_type', 'address', 'officer']
+# officer is excluded: an empty string is valid and means "unknown officer"
+_DISPATCH_REQUIRED_FIELDS = ['dispatch_number', 'dispatch_start', 'dispatch_stop', 'dispatch_type', 'address']
 
 
 def _parse_datetime(value, fmt):
@@ -50,12 +51,11 @@ def about_page(request):
 
     all_count = PoliceLog.objects.count()
 
-    dispatch_type = RecordType.objects.get(display_text='Dispatch')
-    arrest_type = RecordType.objects.get(display_text='Arrest')
-    most_recent_dispatch = PoliceLog.objects.filter(record_type=dispatch_type).order_by('-datetime_start').first()
-    first_dispatch = PoliceLog.objects.filter(record_type=dispatch_type).order_by('datetime_start').first()
-    most_recent_arrest = PoliceLog.objects.filter(record_type=arrest_type).order_by('-datetime_start').first()
-    first_arrest = PoliceLog.objects.filter(record_type=arrest_type).order_by('datetime_start').first()
+    dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
+    arrest_type = RecordType.objects.filter(display_text='Arrest').first()
+
+    dispatches = PoliceLog.objects.filter(record_type=dispatch_type) if dispatch_type else PoliceLog.objects.none()
+    arrests = PoliceLog.objects.filter(record_type=arrest_type) if arrest_type else PoliceLog.objects.none()
 
     counts = {
         "all_records": all_count,
@@ -65,10 +65,10 @@ def about_page(request):
         'arrestees': arrestees,
         'charges': charges,
         'dispatch_types': dispatch_types,
-        'latest_dispatch_date': most_recent_dispatch.datetime_start if most_recent_dispatch else None,
-        'first_dispatch_date': first_dispatch.datetime_start if first_dispatch else None,
-        'latest_arrest_date': most_recent_arrest.datetime_start if most_recent_arrest else None,
-        'first_arrest_date': first_arrest.datetime_start if first_arrest else None,
+        'latest_dispatch_date': dispatches.order_by('-datetime_start').values_list('datetime_start', flat=True).first(),
+        'first_dispatch_date': dispatches.order_by('datetime_start').values_list('datetime_start', flat=True).first(),
+        'latest_arrest_date': arrests.order_by('-datetime_start').values_list('datetime_start', flat=True).first(),
+        'first_arrest_date': arrests.order_by('datetime_start').values_list('datetime_start', flat=True).first(),
     }
 
     context = {"counts": counts}
@@ -125,7 +125,7 @@ def add_dispatch(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    missing = [f for f in _DISPATCH_REQUIRED_FIELDS if f not in data]
+    missing = [f for f in _DISPATCH_REQUIRED_FIELDS if not data.get(f)]
     if missing:
         return JsonResponse({"error": f"Missing required fields: {', '.join(missing)}"}, status=400)
 
@@ -263,8 +263,8 @@ def search_results(request):
         else:
             results = results.order_by("-datetime_start")
 
-        results = results[:limit]
         count = results.count()
+        results = results[:limit]
         web_page = "log_query_site/search_results.html"
 
     context = {"results": results, "count": count}

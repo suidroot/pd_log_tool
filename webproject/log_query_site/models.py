@@ -2,21 +2,27 @@ from datetime import datetime
 from django.db import models, transaction
 
 def split_name(text_name):
+    try:
+        last, first = text_name.split(', ', 1)
+    except ValueError:
+        # Fallback for names not in "Last, First" format
+        parts = text_name.split()
+        if len(parts) >= 2:
+            return {'firstname': parts[0], 'lastname': parts[1], 'middlename': ''}
+        return {'firstname': text_name or 'unknown', 'lastname': 'unknown', 'middlename': ''}
 
-    last, first = text_name.split(', ')
-    split_first = first.split(" ")
-
+    split_first = first.split()
     if len(split_first) > 1:
         name_dict = {
-            'firstname' : split_first[0],
-            'lastname' : last,
-            'middlename' : split_first[1]
+            'firstname': split_first[0],
+            'lastname': last,
+            'middlename': split_first[1],
         }
     else:
         name_dict = {
-            'firstname' : first,
-            'lastname' : last,
-            'middlename' : ''
+            'firstname': first,
+            'lastname': last,
+            'middlename': '',
         }
 
     return name_dict
@@ -243,14 +249,10 @@ class Officer(models.Model):
         return obj
 
     @classmethod
-    def create(cls, municipality, firstname, lastname, middlename=None, \
-               first_seen=None):
+    def create(cls, municipality, firstname, lastname, middlename=None):
 
         firstname = firstname.capitalize()
         lastname = lastname.capitalize()
-        
-        if not first_seen:
-            first_seen = datetime.now()
 
         if middlename:
             middlename = middlename.capitalize()
@@ -259,14 +261,12 @@ class Officer(models.Model):
                 firstname=firstname,
                 lastname=lastname,
                 middlename=middlename,
-                first_seen=first_seen
             )
         else:
             obj = cls(
                 municipality=municipality,
-                firstname=firstname, 
+                firstname=firstname,
                 lastname=lastname,
-                first_seen=first_seen
             )
 
         obj.save()
@@ -302,7 +302,7 @@ class Arrestee(models.Model):
     def get_or_create(cls, arrestee_dict):
         firstname = arrestee_dict['firstname'].capitalize()
         lastname = arrestee_dict['lastname'].capitalize()
-        middlename = arrestee_dict['middlename'].capitalize()
+        middlename = arrestee_dict.get('middlename', '').capitalize()
 
         obj = cls.search_by_name(firstname, lastname, middlename)
 
@@ -312,33 +312,27 @@ class Arrestee(models.Model):
         return obj
 
     @classmethod
-    def create(cls, arrestee_dict, first_seen=None):
+    def create(cls, arrestee_dict):
 
         firstname = arrestee_dict['firstname'].capitalize()
         lastname = arrestee_dict['lastname'].capitalize()
-        
-        if not first_seen:
-            first_seen = datetime.now()
-
         middlename = arrestee_dict.get('middlename', None)
 
         if middlename:
             middlename = middlename.capitalize()
             obj = cls(
-                firstname=firstname, 
-                lastname=lastname, 
+                firstname=firstname,
+                lastname=lastname,
                 middlename=middlename,
-                home_city = arrestee_dict['home_city'].title(),
-                age = int(arrestee_dict['age']),
-                first_seen=first_seen
+                home_city=arrestee_dict['home_city'].title(),
+                age=int(arrestee_dict['age']),
             )
         else:
             obj = cls(
-                firstname=firstname, 
-                lastname=lastname, 
-                home_city = arrestee_dict['home_city'].title(),
-                age = int(arrestee_dict['age']),
-                first_seen=first_seen
+                firstname=firstname,
+                lastname=lastname,
+                home_city=arrestee_dict['home_city'].title(),
+                age=int(arrestee_dict['age']),
             )
 
         obj.save()
