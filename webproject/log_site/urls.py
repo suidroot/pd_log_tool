@@ -18,19 +18,19 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from log_query_site import views
+from log_query_site import reports
 
 urlpatterns = [
     path('', views.index, name='index'),
-    path('about', views.about_page, name='about_page'),
     path('about/', views.about_page, name='about_page'),
     path('admin/', admin.site.urls),
     path('add/arrest/', views.add_arrest, name='add_arrest_log'),
     path('add/dispatch/', views.add_dispatch, name='add_dispatch'),
-    path('search', views.search_records, name='search_records'),
     path('search/', views.search_records, name='search_records'),
-    path('results', views.search_results, name='results'),
     path('results/', views.search_results, name='results'),
-    path('logout/', views.logout_page, name='results'),
+    path('logout/', views.logout_page, name='logout_confirm'),
+    path('reports/', reports.reports_index, name='reports'),
+    path('reports/data-gaps/', reports.report_data_gaps, name='report_data_gaps'),
     path("accounts/", include("django.contrib.auth.urls")),
 ]
 
