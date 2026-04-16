@@ -1,49 +1,63 @@
 {% extends "log_query_site/base.html" %}
 
-{% block title %}Arrest Log Search Results{% endblock %}
-
-{% block meta_description %}Arrest Log Search Results{% endblock %}
-
+{% block title %}Search Results — PWM Police Log DB{% endblock %}
+{% block meta_description %}Police log search results{% endblock %}
 {% block meta_keywords %}portland, police, maine{% endblock %}
 
 {% block content %}
+<div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px;">
+  <h1 style="margin:0;">
+    Results
+    <span class="badge">{{ count }}</span>
+  </h1>
+  <a class="btn btn-secondary" href="/search">New Search</a>
+</div>
 
-<p>There are {{count}} Results</p>
-
-<table>
-    <thead>
+<div class="card" style="padding:0;">
+  <div class="table-wrap">
+    <table>
+      <thead>
         <tr>
-            <th>Record Type</th>
-            <th>Dispatch Number</th>
-            <th>Arrest Date</th>
-            <th>Call Stop</th>
-            <th>Arrestee</th>
-            <th>Call Type</th>
-            <th>Charges</th>
-            <th>Arrest Type</th>
-            <th>Officer</th>
-            <th>Address</th>
+          <th>Type</th>
+          <th>Dispatch #</th>
+          <th>Date / Start</th>
+          <th>Call Stop</th>
+          <th>Arrestee</th>
+          <th>Call Type</th>
+          <th>Charges</th>
+          <th>Arrest Type</th>
+          <th>Officer</th>
+          <th>Address</th>
         </tr>
-    </thead>
-    <tbody>
-{% for result in results %}
-<tr>
-    <td>{{result.record_type}}</td>
-    <td>{{result.dispatch_number}}</td>
-    <td>{{result.datetime_start}}</td>
-    <td>{{result.datetime_stop}}</td>
-    <td>{{result.arrestee}}</td>
-    <td>{{result.dispatch_type}}</td>
-    <td>{% for charge in result.charge.all %}
-        {{charge}}<br>
+      </thead>
+      <tbody>
+        {% for result in results %}
+        <tr>
+          <td>{{ result.record_type }}</td>
+          <td>{{ result.dispatch_number|default:"—" }}</td>
+          <td style="white-space:nowrap;">{{ result.datetime_start }}</td>
+          <td style="white-space:nowrap;">{{ result.datetime_stop|default:"—" }}</td>
+          <td>{{ result.arrestee|default:"—" }}</td>
+          <td>{{ result.dispatch_type|default:"—" }}</td>
+          <td>
+            {% for charge in result.charge.all %}
+              {{ charge }}{% if not forloop.last %}<br>{% endif %}
+            {% empty %}—
+            {% endfor %}
+          </td>
+          <td>{{ result.arrest_type|default:"—" }}</td>
+          <td style="white-space:nowrap;">{{ result.officer }}</td>
+          <td>{{ result.address }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="10" style="text-align:center; color:var(--text-muted); padding:32px;">
+            No records matched your search.
+          </td>
+        </tr>
         {% endfor %}
-    </td>
-    <td>{{result.arrest_type}}</td>
-    <td>{{result.officer}}</td>
-    <td>{{result.address}}</td>
-</tr>
-{% endfor %}
-
-</tbody>
-</table>
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

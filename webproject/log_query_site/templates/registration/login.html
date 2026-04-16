@@ -1,9 +1,95 @@
-<!-- templates/registration/login.html -->
-<div class="login_container" style="text-align:center;">
-<h2>Log In</h2>
-<form method="post">
-  {% csrf_token %}
-  {{ form }}
-  <button type="submit">Log In</button>
-</form>
-</div>
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Log In — PWM Police Log DB</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #2c2c2c;
+    }
+    .login-brand {
+      font-size: 15px;
+      font-weight: 700;
+      color: #555;
+      margin-bottom: 24px;
+      letter-spacing: .3px;
+    }
+    .login-card {
+      background: #fff;
+      border: 1px solid #dde1e7;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.09);
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 380px;
+    }
+    h2 {
+      margin: 0 0 24px;
+      font-size: 20px;
+      font-weight: 700;
+      text-align: center;
+    }
+    /* Style Django's auto-rendered form fields */
+    .login-card p { margin: 0 0 14px; }
+    .login-card label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 5px;
+    }
+    .login-card input[type="text"],
+    .login-card input[type="password"] {
+      width: 100%;
+      border: 1px solid #dde1e7;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: #2c2c2c;
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .login-card input:focus {
+      outline: none;
+      border-color: #4a7fcb;
+      box-shadow: 0 0 0 3px rgba(74,127,203,.15);
+    }
+    button[type="submit"] {
+      width: 100%;
+      margin-top: 20px;
+      background: #4a7fcb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button[type="submit"]:hover { background: #3a6ab8; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h2>Log In</h2>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Log In</button>
+    </form>
+  </div>
+</body>
+</html>
