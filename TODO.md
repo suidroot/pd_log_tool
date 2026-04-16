@@ -3,7 +3,6 @@
   - public site with no names
   - private site authenticated with names
   - insert permission
-- map results on street map
 - search
     - export CSV results
 - add south portland

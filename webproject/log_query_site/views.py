@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from datetime import datetime
 import json
 
+from django.conf import settings
 from .auth import require_api_key
 
 from .models import (
@@ -280,5 +281,13 @@ def search_results(request):
                 "date": str(r.datetime_start)[:10] if r.datetime_start else "",
             })
 
-    context = {"results": results, "count": count, "map_points_json": json.dumps(map_points)}
+    provider_key = settings.MAP_TILE_PROVIDER
+    tile_config = settings.MAP_TILE_PROVIDERS.get(provider_key, settings.MAP_TILE_PROVIDERS["carto-light"])
+
+    context = {
+        "results": results,
+        "count": count,
+        "map_points_json": json.dumps(map_points),
+        "map_tile": tile_config,
+    }
     return render(request, web_page, context)
