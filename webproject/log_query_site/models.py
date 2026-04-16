@@ -1,5 +1,5 @@
 from datetime import datetime
-from django.db import models
+from django.db import models, transaction
 
 def split_name(text_name):
 
@@ -50,7 +50,7 @@ class Disposition(models.Model):
         if not results.exists():
             return_val = None
         elif cls.objects.filter(display_text=display_text).count() > 1:
-            raise("Duplicate Disposition Detected")
+            raise Exception("Duplicate Disposition Detected")
         else:
             return_val = results[0]
 
@@ -89,7 +89,7 @@ class DispatchType(models.Model):
         if not results.exists():
             return_val = None
         elif cls.objects.filter(display_text=display_text).count() > 1:
-            raise("Duplicate Call Type Detected")
+            raise Exception("Duplicate Call Type Detected")
         else:
             return_val = results[0]
 
@@ -100,7 +100,6 @@ class DispatchType(models.Model):
         display_text = display_text.title()
 
         obj = cls.search_by_name(display_text)
-        print(obj)
 
         if not obj:
             obj = cls.create(display_text)
@@ -231,8 +230,7 @@ class Officer(models.Model):
         return results
 
     @classmethod
-    def get_or_create(cls, municipality=municipality, firstname=firstname, \
-                                  lastname=lastname, middlename=None):
+    def get_or_create(cls, municipality, firstname, lastname, middlename=None):
 
         firstname = firstname.capitalize()
         lastname = lastname.capitalize()
@@ -257,8 +255,9 @@ class Officer(models.Model):
         if middlename:
             middlename = middlename.capitalize()
             obj = cls(
-                firstname=firstname, 
-                lastname=lastname, 
+                municipality=municipality,
+                firstname=firstname,
+                lastname=lastname,
                 middlename=middlename,
                 first_seen=first_seen
             )
@@ -346,6 +345,18 @@ class Arrestee(models.Model):
 
         return obj
 
+class APIKey(models.Model):
+    name = models.CharField(max_length=100)
+    prefix = models.CharField(max_length=8, unique=True)
+    key_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.prefix}...)"
+
+
 class PoliceLog(models.Model):
 
     municipality = models.ForeignKey(Municipality, on_delete=models.DO_NOTHING)
@@ -368,8 +379,14 @@ class PoliceLog(models.Model):
 
     @classmethod
     def create_dispatch(cls, media_log):
-        municipality = Municipality.objects.get(short_name=media_log['muni_short'])
-        record_type = RecordType.objects.get(display_text='Dispatch')
+        try:
+            municipality = Municipality.objects.get(short_name=media_log['muni_short'])
+        except Municipality.DoesNotExist:
+            raise ValueError(f"Unknown municipality: {media_log['muni_short']}")
+        try:
+            record_type = RecordType.objects.get(display_text='Dispatch')
+        except RecordType.DoesNotExist:
+            raise ValueError("RecordType 'Dispatch' not found — ensure initial data is loaded")
         dispatch_number = int(media_log['dispatch_number'])
 
         # 09/21/2023 
@@ -406,8 +423,14 @@ class PoliceLog(models.Model):
 
     @classmethod
     def create_arrest(cls, arrest_log):
-        municipality = Municipality.objects.get(short_name=arrest_log['muni_short'])
-        record_type = RecordType.objects.get(display_text='Arrest')
+        try:
+            municipality = Municipality.objects.get(short_name=arrest_log['muni_short'])
+        except Municipality.DoesNotExist:
+            raise ValueError(f"Unknown municipality: {arrest_log['muni_short']}")
+        try:
+            record_type = RecordType.objects.get(display_text='Arrest')
+        except RecordType.DoesNotExist:
+            raise ValueError("RecordType 'Arrest' not found — ensure initial data is loaded")
         # 09/21/2023 
         # 02:15 AM
         arrest_str = arrest_log['arrest_date'].replace('\n', ' ')
@@ -421,7 +444,7 @@ class PoliceLog(models.Model):
                 charge = Charge.get_or_create(charge_item)
                 charges.append(charge)
         else:
-            charges = Charge.get_or_create(arrest_log['charge'])
+            charges = [Charge.get_or_create(arrest_log['charge'])]
 
         officer_name = split_name(arrest_log['officer'])
         officer = Officer.get_or_create(municipality, officer_name['firstname'], officer_name['lastname'])
@@ -438,9 +461,8 @@ class PoliceLog(models.Model):
             officer=officer,
         )
 
-        obj.save()
-        obj.charge.set(charges)
-        obj.save()
-
+        with transaction.atomic():
+            obj.save()
+            obj.charge.set(charges)
 
         return obj

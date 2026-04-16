@@ -46,9 +46,9 @@
             </table>
             <p><label for="dispatch_type">(Dispatch Only) Dispatch Type:</label>
                 <select name="dispatch_type" id="dispatch_type">
-                    <option value=""></li>
+                    <option value=""></option>
                     {% for dispatch_type in dispatch_types %}
-                    <option value="{{ dispatch_type.id }}">{{ dispatch_type.display_text }}</li>
+                    <option value="{{ dispatch_type.id }}">{{ dispatch_type.display_text }}</option>
                     {% endfor %}
                 </select>
             </p>
@@ -87,9 +87,9 @@
 
             <p><label for="officer">Officers:</label>
                 <select name="officer" id="officer">
-                    <option value=""></li>
+                    <option value=""></option>
                     {% for officer in officers %}
-                    <option value="{{ officer.id }}">{{ officer.lastname }}, {{ officer.firstname }} {{ officer.middlename }}</li>
+                    <option value="{{ officer.id }}">{{ officer.lastname }}, {{ officer.firstname }} {{ officer.middlename }}</option>
                     {% endfor %}
                 </select>
             </p>

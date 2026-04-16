@@ -3,6 +3,7 @@
 
 import csv
 import json
+import os
 import urllib.request
 import urllib.parse
 from urllib.error import HTTPError
@@ -16,8 +17,9 @@ __email__ = "locutus@the-collective.net"
 __status__ = "Development"
 
 class config:
-    dispatch_url = 'http://ronara.home.lab:8000/add/dispatch/'
-    arrest_url = 'http://ronara.home.lab:8000/add/arrest/'
+    dispatch_url = os.environ.get('LOG_DB_DISPATCH_URL', 'http://localhost:8000/add/dispatch/')
+    arrest_url = os.environ.get('LOG_DB_ARREST_URL', 'http://localhost:8000/add/arrest/')
+    api_key = os.environ.get('LOG_DB_API_KEY', '')
     debug = False
     error_file_suffix = "error.log"
     current_error_log = ""
@@ -119,8 +121,12 @@ def arrest_upload_loop(parsed_data):
 
 def post_data(url, data):
 
+    if not config.api_key:
+        raise RuntimeError("LOG_DB_API_KEY environment variable is not set")
+
     headers = {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config.api_key}",
     }
 
     data_encoded = json.dumps(data).encode("utf-8")

@@ -31,7 +31,6 @@ urlpatterns = [
     path('results', views.search_results, name='results'),
     path('results/', views.search_results, name='results'),
     path('logout/', views.logout_page, name='results'),
-    path('logout/', views.logout_page, name='results'),
     path("accounts/", include("django.contrib.auth.urls")),
 ]
 
