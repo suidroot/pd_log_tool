@@ -5,16 +5,20 @@ A Django web application for storing and searching police log records (dispatch 
 ## Features
 
 - Search police logs by date range, officer, charge, arrest type, address, or record type
-- View search results on an interactive OpenStreetMap map (for geocoded records)
-- Data gap reports showing missing days in dispatch or arrest coverage
+- Paginated search results with CSV export
+- Interactive OpenStreetMap map on search results (for geocoded records)
+- Trigger per-record geocoding directly from search results
+- Reports: activity charts, data gaps, un-geocoded records, geocode queue status
+- Asynchronous geocoding via Celery + Redis with pause/resume control
 - Ingest dispatch and arrest records from CSV files via a command-line loader
 - Django admin interface for managing lookup data
-- Docker-based production deployment with PostgreSQL
+- Docker-based production deployment with PostgreSQL + Redis
 
 ## Requirements
 
 - Python 3.8+
 - Docker and Docker Compose (for production)
+- Redis (for Celery task queue)
 
 ## Local Development Setup
 
@@ -46,13 +50,38 @@ A Django web application for storing and searching police log records (dispatch 
    python manage.py createsuperuser
    ```
 
+5. For local async geocoding, start Redis and a Celery worker:
+
+   ```bash
+   redis-server
+   celery -A log_site worker --loglevel=info --concurrency=1
+   ```
+
 ## Production Deployment
 
-Production runs with PostgreSQL via Docker Compose. Configure `stack.env` with the required variables (see `example.env`), then:
+Production runs with PostgreSQL, Redis, and a Celery worker via Docker Compose. Configure `stack.env` with the required variables (see `example.env`), then:
 
 ```bash
 docker-compose up --build
 ```
+
+This starts four services: `db` (PostgreSQL), `redis`, `backend` (Django), and `celery` (worker).
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SECRET_KEY` | *(required)* | Django secret key |
+| `DJANGO_ALLOWED_HOSTS` | *(required in prod)* | Space-separated allowed hosts |
+| `CSRF_TRUSTED_ORIGINS` | *(required in prod)* | Space-separated trusted origins |
+| `POSTGRES_DB` | *(required in prod)* | PostgreSQL database name |
+| `POSTGRES_USER` | *(required in prod)* | PostgreSQL username |
+| `POSTGRES_PASSWORD` | *(required in prod)* | PostgreSQL password |
+| `CELERY_BROKER_URL` | `redis://localhost:6379/0` | Redis broker URL |
+| `MAP_TILE_PROVIDER` | `carto-light` | Map tiles: `osm`, `carto-light`, `carto-dark` |
+| `LOG_DB_API_KEY` | *(required for loader)* | CSV loader API key |
+| `LOG_DB_DISPATCH_URL` | `http://localhost:8000/add/dispatch/` | Dispatch ingest endpoint |
+| `LOG_DB_ARREST_URL` | `http://localhost:8000/add/arrest/` | Arrest ingest endpoint |
 
 ## API Key Authentication
 
@@ -83,43 +112,56 @@ python csv_loader/loader.py -f <file.csv> -a
 python csv_loader/loader.py -d <directory/> -m
 ```
 
-The loader reads its target URLs from environment variables, defaulting to localhost:
-
-| Variable | Default |
-|----------|---------|
-| `LOG_DB_API_KEY` | *(required)* |
-| `LOG_DB_DISPATCH_URL` | `http://localhost:8000/add/dispatch/` |
-| `LOG_DB_ARREST_URL` | `http://localhost:8000/add/arrest/` |
-
 **Dispatch CSV columns:** `PD Call#`, `Call Start Date & Time`, `Call End Date & Time`, `Type of Call`, `Street Address / Location`, `Officer Name`
 
-**Arrest CSV columns:** `Date`, `Arrestee Name`, `Age`, `Home City`, `Charge`, `Arrest Type`, `Officer Name`, `Violation Location`
+**Arrest CSV columns:** `Date`, `Arrestee Name`, `Age`, `Home City`, `Charge` (semicolon-separated), `Arrest Type`, `Officer Name`, `Violation Location`
+
+CSV fields with embedded newlines (common in exported spreadsheets) are normalised automatically on import. All string fields have whitespace collapsed before storage.
+
+**Duplicate dispatch numbers:** if a record arrives with a `dispatch_number` that already exists, the ingest compares `datetime_start` and `address`. A true duplicate is silently skipped; a different record that happens to share the number is inserted with the number offset by 100 000 (repeating until a free slot is found).
 
 ## Geocoding
 
-Records can be geocoded against the OpenStreetMap Nominatim API to enable the map view on search results. Coordinates are stored as `latitude`/`longitude` on each `PoliceLog` record.
+Records are geocoded against the OpenStreetMap Nominatim API to enable the map view on search results. Coordinates are stored as `latitude`/`longitude` on each `PoliceLog` record.
 
-**Geocode existing records** (run from `webproject/`):
+Geocoding happens **automatically and asynchronously** via Celery whenever a new record is ingested. If the queue is unavailable at import time, the record is saved without coordinates and can be geocoded later.
+
+Before calling Nominatim, the task checks whether another record at the same address is already geocoded and reuses those coordinates — minimising API calls.
+
+**Bulk-geocode existing records** (run from `webproject/`):
 
 ```bash
-python manage.py geocode_records           # geocode all ungeocode records
+python manage.py geocode_records           # geocode all un-geocoded records
 python manage.py geocode_records --limit 100  # process only the first 100
 ```
 
-Nominatim's usage policy limits requests to 1/second; the command respects this automatically. Geocoded record counts are shown on the About page.
+**Rate limiting:** Nominatim enforces 1 request/second. The Celery worker runs with `--concurrency=1` and the task has `rate_limit='1/s'`. On HTTP 429, the task retries once after 600 seconds then gives up.
+
+**Pause/resume:** the geocoding queue can be paused and resumed from the Geocode Queue report at `/reports/geocode-queue/` without losing queued tasks.
 
 ## Reports
 
-The `/reports/` section currently includes:
+Available at `/reports/`:
 
-- **Data Gaps** — shows missing days or date ranges in dispatch and/or arrest data, with coverage statistics and a severity-coloured gap table. Filterable by record type and date range.
+| Report | URL | Description |
+|--------|-----|-------------|
+| Activity Charts | `/reports/activity/` | Bar charts of dispatches or arrests per day over a date range |
+| Data Gaps | `/reports/data-gaps/` | Missing days in dispatch/arrest coverage with severity indicators |
+| Un-geocoded Records | `/reports/ungeocoded/` | All records lacking map coordinates |
+| Geocode Queue | `/reports/geocode-queue/` | Live Celery queue status, worker health, and pause/resume control |
 
 ## Project Structure
 
 ```
 webproject/          # Django project
-  log_site/          # Settings, root URLs, WSGI
-  log_query_site/    # Main app: models, views, templates
+  log_site/          # Settings, root URLs, WSGI, Celery app
+  log_query_site/    # Main app: models, views, reports, templates
+    tasks.py         # Celery geocoding task
+    geocoder.py      # Nominatim geocoding helper
+    geocoder_control.py  # Pause/resume flag (Redis-backed)
+    management/commands/
+      create_api_key.py   # Generate CSV loader API key
+      geocode_records.py  # Bulk geocoding command
 
 csv_loader/          # Standalone CSV ingestion script
 Dockerfile

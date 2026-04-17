@@ -20,7 +20,7 @@ class config:
     dispatch_url = os.environ.get('LOG_DB_DISPATCH_URL', 'http://localhost:8000/add/dispatch/')
     arrest_url = os.environ.get('LOG_DB_ARREST_URL', 'http://localhost:8000/add/arrest/')
     api_key = os.environ.get('LOG_DB_API_KEY', '')
-    debug = False
+    debug = True
     error_file_suffix = "error.log"
     current_error_log = ""
 
@@ -138,12 +138,12 @@ def post_data(url, data):
             print(".", end="")
     except HTTPError as e:
         print("X", end="")
-
-        write_error_log(f"Error: {e.code}, {e.reason} {data_encoded}")
-
-
+        error_body = e.read().decode("utf-8")
+        write_error_log(f"Error: {e.code} {e.reason}\nSent: {data_encoded}\nResponse: {error_body}\n")
         if config.debug:
-            print("Error:", e.code, e.reason, data)
+            print(f"\nError: {e.code} {e.reason}")
+            print(f"  Response: {error_body}")
+            print(f"  Sent: {data}")
 
 
 def wrap_dispatch_upload(filename):

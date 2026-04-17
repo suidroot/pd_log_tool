@@ -1,12 +1,16 @@
+import json
 from datetime import datetime, timedelta, date as date_type
 
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
+from django.db.models import Count
+from django.db.models.functions import TruncDate
 from django.shortcuts import render
 
 import redis as redis_client
 
 from .models import PoliceLog, RecordType
+from .geocoder_control import is_paused
 
 
 def _parse_date(value):
@@ -168,6 +172,7 @@ def report_geocode_queue(request):
         'inspect_error': inspect_error,
         'ungeocoded_count': ungeocoded_count,
         'geocoded_count': geocoded_count,
+        'geocoder_paused': is_paused(),
     }
     return render(request, 'log_query_site/reports/geocode_queue.html', context)
 
@@ -196,6 +201,51 @@ def report_ungeocoded(request):
         'record_type_filter': record_type_filter,
     }
     return render(request, 'log_query_site/reports/ungeocoded.html', context)
+
+
+@login_required
+def report_activity_chart(request):
+    record_type_filter = request.GET.get('record_type', 'all')
+    start_date = _parse_date(request.GET.get('start_date', ''))
+    end_date   = _parse_date(request.GET.get('end_date', ''))
+
+    dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
+    arrest_type   = RecordType.objects.filter(display_text='Arrest').first()
+
+    def daily_counts(qs, start, end):
+        if start:
+            qs = qs.filter(datetime_start__date__gte=start)
+        if end:
+            qs = qs.filter(datetime_start__date__lte=end)
+        rows = (
+            qs.annotate(day=TruncDate('datetime_start'))
+              .values('day')
+              .annotate(count=Count('id'))
+              .order_by('day')
+        )
+        labels = [str(r['day']) for r in rows]
+        counts = [r['count'] for r in rows]
+        total  = sum(counts)
+        return {'labels': labels, 'counts': counts, 'total': total}
+
+    dispatch_data = arrest_data = None
+
+    if record_type_filter in ('dispatch', 'all') and dispatch_type:
+        qs = PoliceLog.objects.filter(record_type=dispatch_type)
+        dispatch_data = daily_counts(qs, start_date, end_date)
+
+    if record_type_filter in ('arrest', 'all') and arrest_type:
+        qs = PoliceLog.objects.filter(record_type=arrest_type)
+        arrest_data = daily_counts(qs, start_date, end_date)
+
+    context = {
+        'record_type_filter': record_type_filter,
+        'start_date': start_date.isoformat() if start_date else '',
+        'end_date':   end_date.isoformat()   if end_date   else '',
+        'dispatch_json': json.dumps(dispatch_data) if dispatch_data else 'null',
+        'arrest_json':   json.dumps(arrest_data)   if arrest_data   else 'null',
+    }
+    return render(request, 'log_query_site/reports/activity_chart.html', context)
 
 
 @login_required

@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from datetime import datetime
 import csv
@@ -10,6 +11,7 @@ import json
 from django.conf import settings
 from .auth import require_api_key
 from .tasks import geocode_record
+from .geocoder_control import is_paused, pause, resume
 
 from .models import (
     PoliceLog,
@@ -24,7 +26,7 @@ from .models import (
 
 MAX_RESULTS = 100
 
-_ARREST_REQUIRED_FIELDS = ['arrestee', 'arrest_date', 'charge', 'arrest_type', 'officer', 'address']
+_ARREST_REQUIRED_FIELDS = ['arrestee', 'arrest_date', 'charge', 'arrest_type', 'officer']
 # officer is excluded: an empty string is valid and means "unknown officer"
 _DISPATCH_REQUIRED_FIELDS = ['dispatch_number', 'dispatch_start', 'dispatch_stop', 'dispatch_type', 'address']
 
@@ -103,7 +105,7 @@ def add_arrest(request):
     if missing:
         return JsonResponse({"error": f"Missing required fields: {', '.join(missing)}"}, status=400)
 
-    arrest_str = data['arrest_date'].replace('\n', ' ')
+    arrest_str = ' '.join(data['arrest_date'].split())
     if not _parse_datetime(arrest_str, "%m/%d/%y %I:%M %p"):
         return JsonResponse({"error": "Invalid arrest_date format, expected MM/DD/YY HH:MM AM/PM"}, status=400)
 
@@ -140,7 +142,7 @@ def add_dispatch(request):
         return JsonResponse({"error": f"Missing required fields: {', '.join(missing)}"}, status=400)
 
     for date_field, fmt in [('dispatch_start', "%m/%d/%Y %I:%M %p"), ('dispatch_stop', "%m/%d/%Y %I:%M %p")]:
-        date_str = data[date_field].replace('\n', ' ')
+        date_str = ' '.join(data[date_field].split())
         if not _parse_datetime(date_str, fmt):
             return JsonResponse({"error": f"Invalid {date_field} format, expected MM/DD/YYYY HH:MM AM/PM"}, status=400)
 
@@ -341,3 +343,31 @@ def export_csv(request):
         ])
 
     return response
+
+
+@login_required
+@require_POST
+def toggle_geocoder_pause(request):
+    if is_paused():
+        resume()
+        action = 'resumed'
+    else:
+        pause()
+        action = 'paused'
+    return JsonResponse({'status': action})
+
+
+@login_required
+@require_POST
+def trigger_geocode(request, record_id):
+    record = get_object_or_404(PoliceLog, pk=record_id)
+
+    if record.latitude is not None:
+        return JsonResponse({"status": "already_geocoded"})
+
+    try:
+        geocode_record.delay(record.id)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "Queue unavailable"}, status=503)
+
+    return JsonResponse({"status": "queued"})

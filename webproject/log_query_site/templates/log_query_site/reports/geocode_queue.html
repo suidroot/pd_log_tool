@@ -4,11 +4,40 @@
 {% block meta_description %}Celery geocoding queue status{% endblock %}
 
 {% block content %}
-<div style="display:flex; align-items:baseline; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+<div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
   <h1 style="margin:0;">Geocode Queue</h1>
   <a href="/reports/" style="color:var(--text-muted); font-size:14px;">← All Reports</a>
-  <a href="/reports/geocode-queue/" class="btn btn-secondary" style="margin-left:auto; font-size:13px; padding:6px 14px;">&#8635; Refresh</a>
+
+  <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+    {% if geocoder_paused %}
+    <span style="background:#fef3c7; color:#92400e; font-size:13px; font-weight:600; padding:4px 12px; border-radius:20px;">&#9646;&#9646; Paused</span>
+    {% else %}
+    <span style="background:#d1fae5; color:#065f46; font-size:13px; font-weight:600; padding:4px 12px; border-radius:20px;">&#9654; Running</span>
+    {% endif %}
+
+    <button id="pause-btn"
+      data-paused="{{ geocoder_paused|yesno:'true,false' }}"
+      style="font-size:13px; padding:6px 14px; background:{% if geocoder_paused %}#2d8a4e{% else %}#c0392b{% endif %}; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">
+      {% if geocoder_paused %}&#9654; Resume{% else %}&#9646;&#9646; Pause{% endif %}
+    </button>
+
+    <a href="/reports/geocode-queue/" class="btn btn-secondary" style="font-size:13px; padding:6px 14px;">&#8635; Refresh</a>
+  </div>
 </div>
+
+<script>
+document.getElementById('pause-btn').addEventListener('click', function () {
+  var btn = this;
+  btn.disabled = true;
+  fetch('/geocoder/pause/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (data) { location.reload(); })
+  .catch(function () { btn.disabled = false; });
+});
+</script>
 
 <!-- DB progress stats -->
 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:24px;">

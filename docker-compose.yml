@@ -47,7 +47,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: police_logs_celery
-    command: celery -A log_site worker --loglevel=info --concurrency=2
+    command: celery -A log_site worker --loglevel=info --concurrency=1
     restart: always
     env_file:
       - stack.env

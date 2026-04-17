@@ -1,6 +1,7 @@
 {% extends "log_query_site/base.html" %}
 
 {% block title %}Search Results — PWM Police Log DB{% endblock %}
+{% block extra_style %}<style>.content { max-width: none; }</style>{% endblock %}
 {% block meta_description %}Police log search results{% endblock %}
 {% block meta_keywords %}portland, police, maine{% endblock %}
 
@@ -60,7 +61,18 @@
           </td>
           <td>{{ result.arrest_type|default:"—" }}</td>
           <td style="white-space:nowrap;">{{ result.officer }}</td>
-          <td>{{ result.address }}</td>
+          <td>
+            {{ result.address }}
+            {% if result.latitude is None %}
+            <button
+              class="geocode-btn"
+              data-id="{{ result.id }}"
+              data-url="/records/{{ result.id }}/geocode/"
+              style="display:block; margin-top:4px; font-size:11px; padding:2px 8px; background:#fff; border:1px solid var(--border); border-radius:4px; color:var(--text-muted); cursor:pointer;">
+              &#128204; Geocode
+            </button>
+            {% endif %}
+          </td>
         </tr>
         {% empty %}
         <tr>
@@ -110,6 +122,41 @@
   Page {{ page_obj.number }} of {{ paginator.num_pages }}
 </div>
 {% endif %}
+
+<script>
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.geocode-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Queuing…';
+
+  var csrfToken = '{{ csrf_token }}';
+  fetch(btn.dataset.url, {
+    method: 'POST',
+    headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/json'},
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (data) {
+    if (data.status === 'queued') {
+      btn.textContent = '✓ Queued';
+      btn.style.color = '#2d8a4e';
+      btn.style.borderColor = '#2d8a4e';
+    } else if (data.status === 'already_geocoded') {
+      btn.textContent = '✓ Done';
+      btn.style.color = '#2d8a4e';
+    } else {
+      btn.textContent = 'Error';
+      btn.style.color = '#c0392b';
+      btn.disabled = false;
+    }
+  })
+  .catch(function () {
+    btn.textContent = 'Error';
+    btn.style.color = '#c0392b';
+    btn.disabled = false;
+  });
+});
+</script>
 
 {% if map_points_json != "[]" %}
 <div class="card" style="padding:20px 24px; margin-top:20px;">

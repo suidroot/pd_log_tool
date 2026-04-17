@@ -1,5 +1,6 @@
 from datetime import datetime
-from django.db import models, transaction
+from django.db import models, transaction, IntegrityError
+from django.utils import timezone
 
 def split_name(text_name):
     try:
@@ -387,19 +388,17 @@ class PoliceLog(models.Model):
 
         # 09/21/2023 
         # 02:15 AM
-        start_str = media_log['dispatch_start'].replace('\n', ' ')
-        dispatch_start = datetime.strptime(start_str, "%m/%d/%Y %I:%M %p")
-
-        stop_str = media_log['dispatch_stop'].replace('\n', ' ')
-        dispatch_stop = datetime.strptime(stop_str, "%m/%d/%Y %I:%M %p")
+        dispatch_start = timezone.make_aware(datetime.strptime(' '.join(media_log['dispatch_start'].split()), "%m/%d/%Y %I:%M %p"))
+        dispatch_stop  = timezone.make_aware(datetime.strptime(' '.join(media_log['dispatch_stop'].split()),  "%m/%d/%Y %I:%M %p"))
         
-        dispatch_type = DispatchType.get_or_create(media_log['dispatch_type'])
-        dispatch_address = media_log['address'].title()
+        dispatch_type = DispatchType.get_or_create(' '.join(media_log['dispatch_type'].split()))
+        dispatch_address = ' '.join(media_log['address'].split()).title()
 
-        if media_log['officer'] == '':
+        officer_raw = ' '.join(media_log['officer'].split())
+        if officer_raw == '':
             officer = Officer.get_or_create(municipality, 'unknown', 'unknown')
         else:
-            officer_name = split_name(media_log['officer'])
+            officer_name = split_name(officer_raw)
             officer = Officer.get_or_create(municipality, officer_name['firstname'], officer_name['lastname'])
 
         obj = cls(
@@ -412,7 +411,20 @@ class PoliceLog(models.Model):
             address=dispatch_address,
             officer=officer
         )
-        obj.save()
+
+        try:
+            with transaction.atomic():
+                obj.save()
+        except IntegrityError:
+            existing = cls.objects.filter(dispatch_number=dispatch_number).first()
+            if existing and existing.datetime_start == dispatch_start and existing.address == dispatch_address:
+                return existing  # true duplicate — skip
+            # Different record sharing the same number — offset by 100000 until unique
+            new_number = dispatch_number + 100000
+            while cls.objects.filter(dispatch_number=new_number).exists():
+                new_number += 100000
+            obj.dispatch_number = new_number
+            obj.save()
 
         return obj
 
@@ -429,23 +441,26 @@ class PoliceLog(models.Model):
             raise ValueError("RecordType 'Arrest' not found — ensure initial data is loaded")
         # 09/21/2023 
         # 02:15 AM
-        arrest_str = arrest_log['arrest_date'].replace('\n', ' ')
-        arrest_date = datetime.strptime(arrest_str, "%m/%d/%y %I:%M %p")
-        arrestee = Arrestee.get_or_create(arrest_log['arrestee'])
-        arrest_type = ArrestType.get_or_create(arrest_log['arrest_type'])
-        
+        arrest_date = timezone.make_aware(datetime.strptime(' '.join(arrest_log['arrest_date'].split()), "%m/%d/%y %I:%M %p"))
+
+        # Normalize whitespace on all incoming string fields
+        arrestee_data = arrest_log['arrestee']
+        arrestee_data['home_city'] = ' '.join(arrestee_data.get('home_city', '').split())
+        arrestee = Arrestee.get_or_create(arrestee_data)
+
+        arrest_type = ArrestType.get_or_create(' '.join(arrest_log['arrest_type'].split()))
+
         charges = []
         if isinstance(arrest_log['charge'], list):
             for charge_item in arrest_log['charge']:
-                charge = Charge.get_or_create(charge_item)
-                charges.append(charge)
+                charges.append(Charge.get_or_create(' '.join(charge_item.split())))
         else:
-            charges = [Charge.get_or_create(arrest_log['charge'])]
+            charges = [Charge.get_or_create(' '.join(arrest_log['charge'].split()))]
 
-        officer_name = split_name(arrest_log['officer'])
+        officer_name = split_name(' '.join(arrest_log['officer'].split()))
         officer = Officer.get_or_create(municipality, officer_name['firstname'], officer_name['lastname'])
 
-        arrest_address = arrest_log['address'].title()
+        arrest_address = ' '.join(arrest_log.get('address', '').split()).title()
 
         obj = cls(
             municipality=municipality,
