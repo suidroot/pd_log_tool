@@ -9,6 +9,7 @@ import json
 
 from django.conf import settings
 from .auth import require_api_key
+from .tasks import geocode_record
 
 from .models import (
     PoliceLog,
@@ -109,12 +110,16 @@ def add_arrest(request):
     try:
         data["muni_short"] = 'PWM'
         data["record_type"] = 'arrest'
-        PoliceLog.create_arrest(data)
+        record = PoliceLog.create_arrest(data)
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=400)
     except Exception as e:
         return JsonResponse({"error": "Failed to create arrest record"}, status=500)
 
+    try:
+        geocode_record.delay(record.id)
+    except Exception:
+        pass  # broker unavailable — record saved, geocoding deferred to next geocode_records run
     return HttpResponse("success", status=200)
 
 
@@ -147,12 +152,16 @@ def add_dispatch(request):
     try:
         data["muni_short"] = 'PWM'
         data["record_type"] = 'dispatch'
-        PoliceLog.create_dispatch(data)
+        record = PoliceLog.create_dispatch(data)
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=400)
     except Exception as e:
         return JsonResponse({"error": "Failed to create dispatch record"}, status=500)
 
+    try:
+        geocode_record.delay(record.id)
+    except Exception:
+        pass  # broker unavailable — record saved, geocoding deferred to next geocode_records run
     return HttpResponse("success", status=200)
 
 

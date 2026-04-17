@@ -25,5 +25,14 @@
       </p>
     </div>
   </a>
+  <a href="/reports/geocode-queue/" style="text-decoration:none;">
+    <div class="card" style="cursor:pointer; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.13)'" onmouseout="this.style.boxShadow=''">
+      <h2 style="margin-bottom:8px;">Geocode Queue</h2>
+      <p style="color:var(--text-muted); font-size:14px; margin:0;">
+        Live status of the Celery geocoding queue — pending tasks, active workers,
+        scheduled retries, and overall geocoding progress.
+      </p>
+    </div>
+  </a>
 </div>
 {% endblock %}

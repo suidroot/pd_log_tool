@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta, date as date_type
 
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.shortcuts import render
+
+import redis as redis_client
 
 from .models import PoliceLog, RecordType
 
@@ -106,6 +109,67 @@ def _find_gaps(queryset, start_date=None, end_date=None):
 @login_required
 def reports_index(request):
     return render(request, 'log_query_site/reports/index.html')
+
+
+@login_required
+def report_geocode_queue(request):
+    from log_site.celery import app as celery_app
+
+    # ── Queue depth from Redis ────────────────────────────────────────────────
+    pending = None
+    redis_error = None
+    try:
+        r = redis_client.from_url(settings.CELERY_BROKER_URL, socket_connect_timeout=2)
+        pending = r.llen('celery')
+    except Exception as e:
+        redis_error = str(e)
+
+    # ── Live worker inspection (best-effort, 2 s timeout) ────────────────────
+    active = reserved = scheduled = None
+    workers_online = []
+    inspect_error = None
+    try:
+        i = celery_app.control.inspect(timeout=2)
+        active_map    = i.active()    or {}
+        reserved_map  = i.reserved()  or {}
+        scheduled_map = i.scheduled() or {}
+
+        workers_online = sorted(set(active_map) | set(reserved_map) | set(scheduled_map))
+
+        active = [
+            {'worker': w, **t}
+            for w, tasks in active_map.items()
+            for t in tasks
+        ]
+        reserved = [
+            {'worker': w, **t}
+            for w, tasks in reserved_map.items()
+            for t in tasks
+        ]
+        scheduled = [
+            {'worker': w, **t}
+            for w, tasks in scheduled_map.items()
+            for t in tasks
+        ]
+    except Exception as e:
+        inspect_error = str(e)
+
+    # ── DB counts ─────────────────────────────────────────────────────────────
+    ungeocoded_count = PoliceLog.objects.filter(latitude__isnull=True).count()
+    geocoded_count   = PoliceLog.objects.filter(latitude__isnull=False).count()
+
+    context = {
+        'pending': pending,
+        'redis_error': redis_error,
+        'active': active or [],
+        'reserved': reserved or [],
+        'scheduled': scheduled or [],
+        'workers_online': workers_online,
+        'inspect_error': inspect_error,
+        'ungeocoded_count': ungeocoded_count,
+        'geocoded_count': geocoded_count,
+    }
+    return render(request, 'log_query_site/reports/geocode_queue.html', context)
 
 
 @login_required

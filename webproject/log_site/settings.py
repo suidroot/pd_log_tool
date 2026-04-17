@@ -147,3 +147,9 @@ MAP_TILE_PROVIDERS = {
 }
 
 MAP_TILE_PROVIDER = os.environ.get("MAP_TILE_PROVIDER", "carto-light")
+
+# ── Celery ────────────────────────────────────────────────────────────────────
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']

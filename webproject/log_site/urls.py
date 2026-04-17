@@ -33,6 +33,7 @@ urlpatterns = [
     path('reports/', reports.reports_index, name='reports'),
     path('reports/data-gaps/', reports.report_data_gaps, name='report_data_gaps'),
     path('reports/ungeocoded/', reports.report_ungeocoded, name='report_ungeocoded'),
+    path('reports/geocode-queue/', reports.report_geocode_queue, name='report_geocode_queue'),
     path("accounts/", include("django.contrib.auth.urls")),
 ]
 
