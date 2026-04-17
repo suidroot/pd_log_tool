@@ -28,9 +28,11 @@ urlpatterns = [
     path('add/dispatch/', views.add_dispatch, name='add_dispatch'),
     path('search/', views.search_records, name='search_records'),
     path('results/', views.search_results, name='results'),
+    path('results/export/', views.export_csv, name='export_csv'),
     path('logout/', views.logout_page, name='logout_confirm'),
     path('reports/', reports.reports_index, name='reports'),
     path('reports/data-gaps/', reports.report_data_gaps, name='report_data_gaps'),
+    path('reports/ungeocoded/', reports.report_ungeocoded, name='report_ungeocoded'),
     path("accounts/", include("django.contrib.auth.urls")),
 ]
 

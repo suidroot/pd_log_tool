@@ -109,6 +109,32 @@ def reports_index(request):
 
 
 @login_required
+def report_ungeocoded(request):
+    record_type_filter = request.GET.get('record_type', 'all')
+
+    dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
+    arrest_type = RecordType.objects.filter(display_text='Arrest').first()
+
+    qs = PoliceLog.objects.filter(latitude__isnull=True).select_related(
+        'record_type', 'officer', 'arrestee', 'dispatch_type', 'arrest_type'
+    ).order_by('-datetime_start')
+
+    if record_type_filter == 'dispatch' and dispatch_type:
+        qs = qs.filter(record_type=dispatch_type)
+    elif record_type_filter == 'arrest' and arrest_type:
+        qs = qs.filter(record_type=arrest_type)
+
+    total = qs.count()
+
+    context = {
+        'records': qs,
+        'total': total,
+        'record_type_filter': record_type_filter,
+    }
+    return render(request, 'log_query_site/reports/ungeocoded.html', context)
+
+
+@login_required
 def report_data_gaps(request):
     record_type_filter = request.GET.get('record_type', 'all')
     start_date = _parse_date(request.GET.get('start_date', ''))

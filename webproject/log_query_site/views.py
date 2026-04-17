@@ -2,7 +2,9 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from datetime import datetime
+import csv
 import json
 
 from django.conf import settings
@@ -51,7 +53,7 @@ def about_page(request):
     dispatch_types = DispatchType.objects.count()
 
     all_count = PoliceLog.objects.count()
-    geocoded_count = PoliceLog.objects.filter(latitude__isnull=False, longitude__isnull=False).count()
+    geocoded_count = PoliceLog.objects.filter(latitude__isnull=True).count()
 
     dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
     arrest_type = RecordType.objects.filter(display_text='Arrest').first()
@@ -184,6 +186,62 @@ def search_records(request):
     return render(request, "log_query_site/search_records.html", context)
 
 
+def _filter_queryset(raw):
+    """Apply search filters from a POST dict and return an ordered queryset."""
+    fmt = "%Y-%m-%dT%H:%M"
+
+    datetime_start_start = _parse_datetime(raw.get("datetime_start_start", ""), fmt)
+    datetime_start_stop  = _parse_datetime(raw.get("datetime_start_stop",  ""), fmt)
+    datetime_stop_start  = _parse_datetime(raw.get("datetime_stop_start",  ""), fmt)
+    datetime_stop_stop   = _parse_datetime(raw.get("datetime_stop_stop",   ""), fmt)
+
+    dispatch_type_id = raw.get("dispatch_type") or None
+    officer_id       = raw.get("officer")        or None
+    address          = raw.get("address")        or None
+    charge           = raw.getlist("charge")     or None
+    arrestee_id      = raw.get("arrestee")       or None
+    arrestee_last    = raw.get("arrestee_last")  or None
+    arrest_type_id   = raw.get("arrest_type")    or None
+    record_type      = raw.get("record_type")    or None
+
+    results = PoliceLog.objects.all()
+
+    if datetime_start_start and datetime_start_stop:
+        results = results.filter(datetime_start__range=(datetime_start_start, datetime_start_stop))
+    elif datetime_stop_start and datetime_stop_stop:
+        results = results.filter(datetime_stop__range=(datetime_stop_start, datetime_stop_stop))
+
+    if dispatch_type_id:
+        results = results.filter(dispatch_type_id=dispatch_type_id)
+    if officer_id:
+        results = results.filter(officer=officer_id)
+    if record_type and record_type != "all":
+        results = results.filter(record_type=record_type)
+    if arrestee_last:
+        matched = Arrestee.objects.filter(lastname=arrestee_last.title())
+        results = results.filter(arrestee__in=matched)
+    elif arrestee_id:
+        results = results.filter(arrestee=arrestee_id)
+    if charge:
+        results = results.filter(charge__in=charge)
+    if arrest_type_id:
+        results = results.filter(arrest_type=arrest_type_id)
+    if address:
+        results = results.filter(address__icontains=address)
+
+    sort = raw.get("sort_radio", "datetime_start")
+    order_map = {
+        "datetime_start": "-datetime_start",
+        "datetime_stop":  "-datetime_stop",
+        "arrestee":       "arrestee",
+        "arrest_type":    "arrest_type",
+        "officer":        "officer",
+        "dispatch_type":  "dispatch_type",
+    }
+    results = results.order_by(order_map.get(sort, "-datetime_start"))
+    return results
+
+
 @login_required
 def search_results(request):
 
@@ -193,85 +251,31 @@ def search_results(request):
         results = get_object_or_404(PoliceLog, dispatch_number=dispatch_number)
         count = 1
         web_page = "log_query_site/single_dispatch_call_result.html"
+        context = {"results": results, "count": count}
+        return render(request, web_page, context)
 
-    else:
-        raw = request.POST
-        fmt = "%Y-%m-%dT%H:%M"
+    raw = request.POST
+    try:
+        page_size = int(raw.get("result_limit", MAX_RESULTS))
+        if page_size < 1:
+            page_size = MAX_RESULTS
+    except (ValueError, TypeError):
+        page_size = MAX_RESULTS
 
-        datetime_start_start = _parse_datetime(raw.get("datetime_start_start", ""), fmt)
-        datetime_start_stop = _parse_datetime(raw.get("datetime_start_stop", ""), fmt)
-        datetime_stop_start = _parse_datetime(raw.get("datetime_stop_start", ""), fmt)
-        datetime_stop_stop = _parse_datetime(raw.get("datetime_stop_stop", ""), fmt)
+    try:
+        page_number = int(raw.get("page", 1))
+        if page_number < 1:
+            page_number = 1
+    except (ValueError, TypeError):
+        page_number = 1
 
-        dispatch_type_id = raw.get("dispatch_type") or None
-        officer_id = raw.get("officer") or None
-        address = raw.get("address") or None
-        charge = raw.getlist("charge") or None
-        arrestee_id = raw.get("arrestee") or None
-        arrestee_last = raw.get("arrestee_last") or None
-        arrest_type_id = raw.get("arrest_type") or None
-        record_type = raw.get("record_type") or None
-
-        try:
-            limit = int(raw.get("result_limit", MAX_RESULTS))
-            if limit < 1:
-                limit = MAX_RESULTS
-        except (ValueError, TypeError):
-            limit = MAX_RESULTS
-
-        results = PoliceLog.objects.all()
-
-        if datetime_start_start and datetime_start_stop:
-            results = results.filter(datetime_start__range=(datetime_start_start, datetime_start_stop))
-        elif datetime_stop_start and datetime_stop_stop:
-            results = results.filter(datetime_stop__range=(datetime_stop_start, datetime_stop_stop))
-
-        if dispatch_type_id:
-            results = results.filter(dispatch_type_id=dispatch_type_id)
-
-        if officer_id:
-            results = results.filter(officer=officer_id)
-
-        if record_type and record_type != "all":
-            results = results.filter(record_type=record_type)
-
-        if arrestee_last:
-            matched = Arrestee.objects.filter(lastname=arrestee_last.title())
-            results = results.filter(arrestee__in=matched)
-        elif arrestee_id:
-            results = results.filter(arrestee=arrestee_id)
-
-        if charge:
-            results = results.filter(charge__in=charge)
-
-        if arrest_type_id:
-            results = results.filter(arrest_type=arrest_type_id)
-
-        if address:
-            results = results.filter(address__icontains=address)
-
-        sort = raw.get("sort_radio", "datetime_start")
-        if sort == "datetime_start":
-            results = results.order_by("-datetime_start")
-        elif sort == "datetime_stop":
-            results = results.order_by("-datetime_stop")
-        elif sort == "arrestee":
-            results = results.order_by("arrestee")
-        elif sort == "arrest_type":
-            results = results.order_by("arrest_type")
-        elif sort == "officer":
-            results = results.order_by("officer")
-        elif sort == "dispatch_type":
-            results = results.order_by("dispatch_type")
-        else:
-            results = results.order_by("-datetime_start")
-
-        count = results.count()
-        results = results[:limit]
-        web_page = "log_query_site/search_results.html"
+    qs = _filter_queryset(raw)
+    total_count = qs.count()
+    paginator = Paginator(qs, page_size)
+    page_obj = paginator.get_page(page_number)
 
     map_points = []
-    for r in results:
+    for r in page_obj:
         if r.latitude and r.longitude:
             map_points.append({
                 "lat": r.latitude,
@@ -284,10 +288,47 @@ def search_results(request):
     provider_key = settings.MAP_TILE_PROVIDER
     tile_config = settings.MAP_TILE_PROVIDERS.get(provider_key, settings.MAP_TILE_PROVIDERS["carto-light"])
 
+    # POST params for the replay form (export + pagination), strip stale page param
+    post_params = [(k, v) for k, values in raw.lists() for v in values if k != "page"]
+
     context = {
-        "results": results,
-        "count": count,
+        "results": page_obj,
+        "count": total_count,
+        "page_obj": page_obj,
+        "paginator": paginator,
         "map_points_json": json.dumps(map_points),
         "map_tile": tile_config,
+        "post_params": post_params,
     }
-    return render(request, web_page, context)
+    return render(request, "log_query_site/search_results.html", context)
+
+
+@login_required
+def export_csv(request):
+    results = _filter_queryset(request.POST)
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="police_log_export.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "ID", "Type", "Dispatch #", "Date/Start", "Call Stop",
+        "Arrestee", "Call Type", "Charges", "Arrest Type", "Officer", "Address",
+    ])
+
+    for r in results.prefetch_related("charge"):
+        writer.writerow([
+            r.id,
+            str(r.record_type),
+            r.dispatch_number or "",
+            r.datetime_start or "",
+            r.datetime_stop or "",
+            str(r.arrestee) if r.arrestee else "",
+            str(r.dispatch_type) if r.dispatch_type else "",
+            "; ".join(str(c) for c in r.charge.all()),
+            str(r.arrest_type) if r.arrest_type else "",
+            str(r.officer),
+            r.address,
+        ])
+
+    return response
