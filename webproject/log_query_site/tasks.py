@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 def geocode_record(self, record_id):
     if is_paused():
         # Re-queue after 60 s so the task isn't lost while paused
-        raise self.retry(countdown=60, max_retries=None)
+        raise self.retry(countdown=60)
 
     from .models import PoliceLog
     try:

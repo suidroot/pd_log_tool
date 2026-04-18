@@ -51,17 +51,13 @@ class Disposition(models.Model):
 
     @classmethod
     def search_by_name(cls, display_text):
-
         results = cls.objects.filter(display_text=display_text)
-
-        if not results.exists():
-            return_val = None
-        elif cls.objects.filter(display_text=display_text).count() > 1:
+        count = results.count()
+        if count == 0:
+            return None
+        if count > 1:
             raise Exception("Duplicate Disposition Detected")
-        else:
-            return_val = results[0]
-
-        return return_val
+        return results[0]
 
     @classmethod
     def get_or_create(cls, display_text):
@@ -90,17 +86,13 @@ class DispatchType(models.Model):
 
     @classmethod
     def search_by_name(cls, display_text):
-
         results = cls.objects.filter(display_text=display_text)
-
-        if not results.exists():
-            return_val = None
-        elif cls.objects.filter(display_text=display_text).count() > 1:
+        count = results.count()
+        if count == 0:
+            return None
+        if count > 1:
             raise Exception("Duplicate Call Type Detected")
-        else:
-            return_val = results[0]
-
-        return return_val
+        return results[0]
 
     @classmethod
     def get_or_create(cls, display_text):
@@ -129,18 +121,13 @@ class ArrestType(models.Model):
 
     @classmethod
     def search_by_name(cls, display_text):
-
         results = cls.objects.filter(display_text=display_text)
-
-        if not cls.objects.filter(display_text=display_text).exists():
-            results = None
-        elif cls.objects.filter(display_text=display_text).count() > 1:
-            results = None
-        else:
-            query_return = cls.objects.filter(display_text=display_text)
-            return query_return[0]
-
-        return results
+        count = results.count()
+        if count == 0:
+            return None
+        if count > 1:
+            return None
+        return results[0]
 
     @classmethod
     def get_or_create(cls, display_text):
@@ -288,16 +275,13 @@ class Arrestee(models.Model):
 
     @classmethod
     def search_by_name(cls, firstname, lastname, middlename=None):
-
-        if not cls.objects.filter(firstname=firstname, lastname=lastname).exists():
-            results = None
-        elif cls.objects.filter(firstname=firstname, lastname=lastname).count() > 1:
-            results = None
-        else:
-            query_return = cls.objects.filter(firstname=firstname, lastname=lastname)
-            return query_return[0]
-
-        return results
+        results = cls.objects.filter(firstname=firstname, lastname=lastname)
+        count = results.count()
+        if count == 0:
+            return None
+        if count > 1:
+            return None
+        return results[0]
 
     @classmethod
     def get_or_create(cls, arrestee_dict):

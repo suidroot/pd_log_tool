@@ -26,7 +26,7 @@ class config:
 
 def write_error_log(data):
 
-    with open(config.current_error_log, 'w+') as filehandle:
+    with open(config.current_error_log, 'a') as filehandle:
         filehandle.write(data)
 
 def get_args():
@@ -174,5 +174,8 @@ def main(args):
         print("")
 
 if __name__ == '__main__':
-    args=get_args()
+    args = get_args()
+    if not args.directory and not args.filename:
+        print("Error: specify a file (-f) or directory (-d)")
+        raise SystemExit(1)
     main(args)

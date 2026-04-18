@@ -20,9 +20,15 @@ A Django web application for storing and searching police log records (dispatch 
 - Docker and Docker Compose (for production)
 - Redis (for Celery task queue)
 
+## Loader Modules
+Various Police departments have different CMS and file formats and will require different download scripts, these can be added as submodules to the project in the `log_loaders` directory. Below is a list of the known loaders.
+
+- Portland Maine: https://github.com/suidroot/PWM-Police-Log-Downloader.git
+
+
 ## Local Development Setup
 
-1. Clone the repo (including submodules) and install dependencies:
+1. Clone the repo (including optional submodules) and install dependencies:
 
    ```bash
    git clone --recurse-submodules <repo-url>
@@ -103,9 +109,9 @@ python manage.py create_api_key --name "csv_loader"
 
 The raw key is printed once and cannot be recovered. Store it immediately. Keys can be deactivated at any time via the Django admin under **API Keys**.
 
-## Loading CSV Data
+## Loading CSV Data Maunally
 
-The `csv_loader/loader.py` script reads CSV exports and POSTs records to the running Django app. An API key is required (see above).
+The `csv_loader/loader.py` script reads CSV exports and POSTs records to the running Django app. An API key is required (see above). This can be used as template code to use in parsers and downloaders for various police departments reports.
 
 ```bash
 export LOG_DB_API_KEY=<key from create_api_key>

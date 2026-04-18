@@ -327,7 +327,7 @@ def export_csv(request):
         "Arrestee", "Call Type", "Charges", "Arrest Type", "Officer", "Address",
     ])
 
-    for r in results.prefetch_related("charge"):
+    for r in results.select_related("record_type", "officer", "arrestee", "dispatch_type", "arrest_type").prefetch_related("charge"):
         writer.writerow([
             r.id,
             str(r.record_type),
