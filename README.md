@@ -22,7 +22,15 @@ A Django web application for storing and searching police log records (dispatch 
 
 ## Local Development Setup
 
-1. Clone the repo and install dependencies:
+1. Clone the repo (including submodules) and install dependencies:
+
+   ```bash
+   git clone --recurse-submodules <repo-url>
+   # or, if already cloned without submodules:
+   git submodule update --init
+   ```
+
+   Then install Python dependencies:
 
    ```bash
    pip install -r webproject/requirements.txt
