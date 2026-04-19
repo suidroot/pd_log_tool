@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-''' Name of Script '''
+'''  Name of Script '''
 
 import csv
 import json
+import os
 import urllib.request
 import urllib.parse
 from urllib.error import HTTPError
@@ -16,15 +17,16 @@ __email__ = "locutus@the-collective.net"
 __status__ = "Development"
 
 class config:
-    dispatch_url = 'http://ronara.home.lab:8000/add/dispatch/'
-    arrest_url = 'http://ronara.home.lab:8000/add/arrest/'
-    debug = False
+    dispatch_url = os.environ.get('LOG_DB_DISPATCH_URL', 'http://localhost:8000/add/dispatch/')
+    arrest_url = os.environ.get('LOG_DB_ARREST_URL', 'http://localhost:8000/add/arrest/')
+    api_key = os.environ.get('LOG_DB_API_KEY', '')
+    debug = True
     error_file_suffix = "error.log"
     current_error_log = ""
 
 def write_error_log(data):
 
-    with open(config.current_error_log, 'w+') as filehandle:
+    with open(config.current_error_log, 'a') as filehandle:
         filehandle.write(data)
 
 def get_args():
@@ -49,15 +51,15 @@ def split_name(text_name):
             middle = ''
     
     except ValueError:
-        full_name = text_name.split(' ')
-        if len(full_name) < 3:
+        full_name = text_name.split()
+        if len(full_name) >= 2:
             first = full_name[0]
             last = full_name[1]
-            middle = ''
+            middle = full_name[2] if len(full_name) > 2 else ''
         else:
-            first = full_name[0]
-            last = full_name[1]
-            middle = full_name[2]
+            first = full_name[0] if full_name else text_name
+            last = 'unknown'
+            middle = ''
 
     name_dict = {
         'firstname' : first,
@@ -119,8 +121,12 @@ def arrest_upload_loop(parsed_data):
 
 def post_data(url, data):
 
+    if not config.api_key:
+        raise RuntimeError("LOG_DB_API_KEY environment variable is not set")
+
     headers = {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config.api_key}",
     }
 
     data_encoded = json.dumps(data).encode("utf-8")
@@ -132,12 +138,12 @@ def post_data(url, data):
             print(".", end="")
     except HTTPError as e:
         print("X", end="")
-
-        write_error_log(f"Error: {e.code}, {e.reason} {data_encoded}")
-
-
+        error_body = e.read().decode("utf-8")
+        write_error_log(f"Error: {e.code} {e.reason}\nSent: {data_encoded}\nResponse: {error_body}\n")
         if config.debug:
-            print("Error:", e.code, e.reason, data)
+            print(f"\nError: {e.code} {e.reason}")
+            print(f"  Response: {error_body}")
+            print(f"  Sent: {data}")
 
 
 def wrap_dispatch_upload(filename):
@@ -168,5 +174,8 @@ def main(args):
         print("")
 
 if __name__ == '__main__':
-    args=get_args()
+    args = get_args()
+    if not args.directory and not args.filename:
+        print("Error: specify a file (-f) or directory (-d)")
+        raise SystemExit(1)
     main(args)

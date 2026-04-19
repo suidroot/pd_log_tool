@@ -6,10 +6,11 @@ from .models import (
     PoliceLog,
     DispatchType,
     Disposition,
-    ArrestType, 
+    ArrestType,
     Charge,
     Officer,
-    Arrestee
+    Arrestee,
+    APIKey,
 )
 
 admin.site.register(Municipality)
@@ -21,3 +22,10 @@ admin.site.register(ArrestType)
 admin.site.register(Charge)
 admin.site.register(Officer)
 admin.site.register(Arrestee)
+
+
+@admin.register(APIKey)
+class APIKeyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'prefix', 'is_active', 'created_at', 'last_used')
+    list_filter = ('is_active',)
+    readonly_fields = ('prefix', 'key_hash', 'created_at', 'last_used')

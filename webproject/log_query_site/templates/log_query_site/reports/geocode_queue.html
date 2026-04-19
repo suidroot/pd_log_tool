@@ -1,0 +1,139 @@
+{% extends "log_query_site/base.html" %}
+
+{% block title %}Geocode Queue — Reports{% endblock %}
+{% block meta_description %}Celery geocoding queue status{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+  <h1 style="margin:0;">Geocode Queue</h1>
+  <a href="/reports/" style="color:var(--text-muted); font-size:14px;">← All Reports</a>
+
+  <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+    {% if geocoder_paused %}
+    <span style="background:#fef3c7; color:#92400e; font-size:13px; font-weight:600; padding:4px 12px; border-radius:20px;">&#9646;&#9646; Paused</span>
+    {% else %}
+    <span style="background:#d1fae5; color:#065f46; font-size:13px; font-weight:600; padding:4px 12px; border-radius:20px;">&#9654; Running</span>
+    {% endif %}
+
+    <button id="pause-btn"
+      data-paused="{{ geocoder_paused|yesno:'true,false' }}"
+      style="font-size:13px; padding:6px 14px; background:{% if geocoder_paused %}#2d8a4e{% else %}#c0392b{% endif %}; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">
+      {% if geocoder_paused %}&#9654; Resume{% else %}&#9646;&#9646; Pause{% endif %}
+    </button>
+
+    <a href="/reports/geocode-queue/" class="btn btn-secondary" style="font-size:13px; padding:6px 14px;">&#8635; Refresh</a>
+  </div>
+</div>
+
+<script>
+document.getElementById('pause-btn').addEventListener('click', function () {
+  var btn = this;
+  btn.disabled = true;
+  fetch('/geocoder/pause/', {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (data) { location.reload(); })
+  .catch(function () { btn.disabled = false; });
+});
+</script>
+
+<!-- DB progress stats -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:24px;">
+  <div class="card" style="padding:16px 18px; text-align:center;">
+    <div style="font-size:26px; font-weight:700; color:var(--accent);">{{ geocoded_count }}</div>
+    <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Geocoded</div>
+  </div>
+  <div class="card" style="padding:16px 18px; text-align:center;">
+    <div style="font-size:26px; font-weight:700; color:{% if ungeocoded_count > 0 %}#c0392b{% else %}#2d8a4e{% endif %};">{{ ungeocoded_count }}</div>
+    <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Un-geocoded</div>
+  </div>
+  <div class="card" style="padding:16px 18px; text-align:center;">
+    <div style="font-size:26px; font-weight:700; color:var(--text);">
+      {% if pending is not None %}{{ pending }}{% else %}—{% endif %}
+    </div>
+    <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Pending in Queue</div>
+  </div>
+  <div class="card" style="padding:16px 18px; text-align:center;">
+    <div style="font-size:26px; font-weight:700; color:var(--text);">{{ active|length }}</div>
+    <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Active</div>
+  </div>
+  <div class="card" style="padding:16px 18px; text-align:center;">
+    <div style="font-size:26px; font-weight:700; color:var(--text);">{{ scheduled|length }}</div>
+    <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Scheduled / Retry</div>
+  </div>
+</div>
+
+<!-- Worker status -->
+<div class="card" style="margin-bottom:20px;">
+  <h2 style="margin-bottom:12px;">Workers</h2>
+  {% if inspect_error %}
+    <p style="color:#c0392b; font-size:14px; margin:0;">Could not reach workers: {{ inspect_error }}</p>
+  {% elif workers_online %}
+    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+      {% for w in workers_online %}
+        <span style="background:#d1fae5; color:#065f46; font-size:13px; font-weight:600; padding:4px 12px; border-radius:20px;">&#9679; {{ w }}</span>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="color:#c0392b; font-size:14px; margin:0;">&#9679; No workers online</p>
+  {% endif %}
+
+  {% if redis_error %}
+    <p style="color:#c0392b; font-size:13px; margin-top:10px; margin-bottom:0;">Redis error: {{ redis_error }}</p>
+  {% endif %}
+</div>
+
+<!-- Active tasks -->
+{% if active %}
+<div class="card" style="padding:0; margin-bottom:20px;">
+  <div style="padding:16px 20px 0;"><h2 style="margin:0 0 12px;">Active Tasks</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Task ID</th><th>Name</th><th>Args</th><th>Worker</th></tr></thead>
+      <tbody>
+        {% for t in active %}
+        <tr>
+          <td style="font-size:12px; font-family:monospace;">{{ t.id|truncatechars:20 }}</td>
+          <td>{{ t.name }}</td>
+          <td style="font-size:12px; font-family:monospace;">{{ t.args }}</td>
+          <td style="font-size:12px;">{{ t.worker }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Scheduled / retry tasks -->
+{% if scheduled %}
+<div class="card" style="padding:0; margin-bottom:20px;">
+  <div style="padding:16px 20px 0;"><h2 style="margin:0 0 12px;">Scheduled / Retry Tasks</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Task ID</th><th>Name</th><th>Args</th><th>ETA</th><th>Worker</th></tr></thead>
+      <tbody>
+        {% for t in scheduled %}
+        <tr>
+          <td style="font-size:12px; font-family:monospace;">{{ t.request.id|truncatechars:20 }}</td>
+          <td>{{ t.request.name }}</td>
+          <td style="font-size:12px; font-family:monospace;">{{ t.request.args }}</td>
+          <td style="white-space:nowrap; font-size:13px;">{{ t.eta }}</td>
+          <td style="font-size:12px;">{{ t.worker }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if not active and not scheduled and not inspect_error %}
+<div class="card" style="text-align:center; color:#2d8a4e; padding:24px; font-weight:600;">
+  No active or scheduled tasks — queue is idle.
+</div>
+{% endif %}
+
+{% endblock %}

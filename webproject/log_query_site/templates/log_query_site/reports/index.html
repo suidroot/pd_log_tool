@@ -1,0 +1,46 @@
+{% extends "log_query_site/base.html" %}
+
+{% block title %}Reports — PWM Police Log DB{% endblock %}
+{% block meta_description %}Police log data reports{% endblock %}
+
+{% block content %}
+<h1>Reports</h1>
+
+<div class="grid-2">
+  <a href="/reports/activity/" style="text-decoration:none;">
+    <div class="card" style="cursor:pointer; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.13)'" onmouseout="this.style.boxShadow=''">
+      <h2 style="margin-bottom:8px;">Activity Charts</h2>
+      <p style="color:var(--text-muted); font-size:14px; margin:0;">
+        Bar charts showing number of dispatches or arrests per day over a selected date range.
+      </p>
+    </div>
+  </a>
+  <a href="/reports/data-gaps/" style="text-decoration:none;">
+    <div class="card" style="cursor:pointer; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.13)'" onmouseout="this.style.boxShadow=''">
+      <h2 style="margin-bottom:8px;">Data Gaps</h2>
+      <p style="color:var(--text-muted); font-size:14px; margin:0;">
+        Identify missing days or date ranges where no dispatch or arrest records were loaded.
+        Useful for spotting incomplete imports or coverage holes.
+      </p>
+    </div>
+  </a>
+  <a href="/reports/ungeocoded/" style="text-decoration:none;">
+    <div class="card" style="cursor:pointer; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.13)'" onmouseout="this.style.boxShadow=''">
+      <h2 style="margin-bottom:8px;">Un-geocoded Records</h2>
+      <p style="color:var(--text-muted); font-size:14px; margin:0;">
+        List all records that have not yet been assigned map coordinates.
+        Use this to identify addresses that need manual review or a geocoding run.
+      </p>
+    </div>
+  </a>
+  <a href="/reports/geocode-queue/" style="text-decoration:none;">
+    <div class="card" style="cursor:pointer; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.13)'" onmouseout="this.style.boxShadow=''">
+      <h2 style="margin-bottom:8px;">Geocode Queue</h2>
+      <p style="color:var(--text-muted); font-size:14px; margin:0;">
+        Live status of the Celery geocoding queue — pending tasks, active workers,
+        scheduled retries, and overall geocoding progress.
+      </p>
+    </div>
+  </a>
+</div>
+{% endblock %}

@@ -1,22 +1,29 @@
 from datetime import datetime
-from django.db import models
+from django.db import models, transaction, IntegrityError
+from django.utils import timezone
 
 def split_name(text_name):
+    try:
+        last, first = text_name.split(', ', 1)
+    except ValueError:
+        # Fallback for names not in "Last, First" format
+        parts = text_name.split()
+        if len(parts) >= 2:
+            return {'firstname': parts[0], 'lastname': parts[1], 'middlename': ''}
+        return {'firstname': text_name or 'unknown', 'lastname': 'unknown', 'middlename': ''}
 
-    last, first = text_name.split(', ')
-    split_first = first.split(" ")
-
+    split_first = first.split()
     if len(split_first) > 1:
         name_dict = {
-            'firstname' : split_first[0],
-            'lastname' : last,
-            'middlename' : split_first[1]
+            'firstname': split_first[0],
+            'lastname': last,
+            'middlename': split_first[1],
         }
     else:
         name_dict = {
-            'firstname' : first,
-            'lastname' : last,
-            'middlename' : ''
+            'firstname': first,
+            'lastname': last,
+            'middlename': '',
         }
 
     return name_dict
@@ -44,17 +51,13 @@ class Disposition(models.Model):
 
     @classmethod
     def search_by_name(cls, display_text):
-
         results = cls.objects.filter(display_text=display_text)
-
-        if not results.exists():
-            return_val = None
-        elif cls.objects.filter(display_text=display_text).count() > 1:
-            raise("Duplicate Disposition Detected")
-        else:
-            return_val = results[0]
-
-        return return_val
+        count = results.count()
+        if count == 0:
+            return None
+        if count > 1:
+            raise Exception("Duplicate Disposition Detected")
+        return results[0]
 
     @classmethod
     def get_or_create(cls, display_text):
@@ -83,24 +86,19 @@ class DispatchType(models.Model):
 
     @classmethod
     def search_by_name(cls, display_text):
-
         results = cls.objects.filter(display_text=display_text)
-
-        if not results.exists():
-            return_val = None
-        elif cls.objects.filter(display_text=display_text).count() > 1:
-            raise("Duplicate Call Type Detected")
-        else:
-            return_val = results[0]
-
-        return return_val
+        count = results.count()
+        if count == 0:
+            return None
+        if count > 1:
+            raise Exception("Duplicate Call Type Detected")
+        return results[0]
 
     @classmethod
     def get_or_create(cls, display_text):
         display_text = display_text.title()
 
         obj = cls.search_by_name(display_text)
-        print(obj)
 
         if not obj:
             obj = cls.create(display_text)
@@ -123,18 +121,13 @@ class ArrestType(models.Model):
 
     @classmethod
     def search_by_name(cls, display_text):
-
         results = cls.objects.filter(display_text=display_text)
-
-        if not cls.objects.filter(display_text=display_text).exists():
-            results = None
-        elif cls.objects.filter(display_text=display_text).count() > 1:
-            results = None
-        else:
-            query_return = cls.objects.filter(display_text=display_text)
-            return query_return[0]
-
-        return results
+        count = results.count()
+        if count == 0:
+            return None
+        if count > 1:
+            return None
+        return results[0]
 
     @classmethod
     def get_or_create(cls, display_text):
@@ -231,8 +224,7 @@ class Officer(models.Model):
         return results
 
     @classmethod
-    def get_or_create(cls, municipality=municipality, firstname=firstname, \
-                                  lastname=lastname, middlename=None):
+    def get_or_create(cls, municipality, firstname, lastname, middlename=None):
 
         firstname = firstname.capitalize()
         lastname = lastname.capitalize()
@@ -245,29 +237,24 @@ class Officer(models.Model):
         return obj
 
     @classmethod
-    def create(cls, municipality, firstname, lastname, middlename=None, \
-               first_seen=None):
+    def create(cls, municipality, firstname, lastname, middlename=None):
 
         firstname = firstname.capitalize()
         lastname = lastname.capitalize()
-        
-        if not first_seen:
-            first_seen = datetime.now()
 
         if middlename:
             middlename = middlename.capitalize()
             obj = cls(
-                firstname=firstname, 
-                lastname=lastname, 
+                municipality=municipality,
+                firstname=firstname,
+                lastname=lastname,
                 middlename=middlename,
-                first_seen=first_seen
             )
         else:
             obj = cls(
                 municipality=municipality,
-                firstname=firstname, 
+                firstname=firstname,
                 lastname=lastname,
-                first_seen=first_seen
             )
 
         obj.save()
@@ -288,22 +275,19 @@ class Arrestee(models.Model):
 
     @classmethod
     def search_by_name(cls, firstname, lastname, middlename=None):
-
-        if not cls.objects.filter(firstname=firstname, lastname=lastname).exists():
-            results = None
-        elif cls.objects.filter(firstname=firstname, lastname=lastname).count() > 1:
-            results = None
-        else:
-            query_return = cls.objects.filter(firstname=firstname, lastname=lastname)
-            return query_return[0]
-
-        return results
+        results = cls.objects.filter(firstname=firstname, lastname=lastname)
+        count = results.count()
+        if count == 0:
+            return None
+        if count > 1:
+            return None
+        return results[0]
 
     @classmethod
     def get_or_create(cls, arrestee_dict):
         firstname = arrestee_dict['firstname'].capitalize()
         lastname = arrestee_dict['lastname'].capitalize()
-        middlename = arrestee_dict['middlename'].capitalize()
+        middlename = arrestee_dict.get('middlename', '').capitalize()
 
         obj = cls.search_by_name(firstname, lastname, middlename)
 
@@ -313,38 +297,44 @@ class Arrestee(models.Model):
         return obj
 
     @classmethod
-    def create(cls, arrestee_dict, first_seen=None):
+    def create(cls, arrestee_dict):
 
         firstname = arrestee_dict['firstname'].capitalize()
         lastname = arrestee_dict['lastname'].capitalize()
-        
-        if not first_seen:
-            first_seen = datetime.now()
-
         middlename = arrestee_dict.get('middlename', None)
 
         if middlename:
             middlename = middlename.capitalize()
             obj = cls(
-                firstname=firstname, 
-                lastname=lastname, 
+                firstname=firstname,
+                lastname=lastname,
                 middlename=middlename,
-                home_city = arrestee_dict['home_city'].title(),
-                age = int(arrestee_dict['age']),
-                first_seen=first_seen
+                home_city=arrestee_dict['home_city'].title(),
+                age=int(arrestee_dict['age']),
             )
         else:
             obj = cls(
-                firstname=firstname, 
-                lastname=lastname, 
-                home_city = arrestee_dict['home_city'].title(),
-                age = int(arrestee_dict['age']),
-                first_seen=first_seen
+                firstname=firstname,
+                lastname=lastname,
+                home_city=arrestee_dict['home_city'].title(),
+                age=int(arrestee_dict['age']),
             )
 
         obj.save()
 
         return obj
+
+class APIKey(models.Model):
+    name = models.CharField(max_length=100)
+    prefix = models.CharField(max_length=8, unique=True)
+    key_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.prefix}...)"
+
 
 class PoliceLog(models.Model):
 
@@ -360,6 +350,8 @@ class PoliceLog(models.Model):
     charge = models.ManyToManyField(Charge) # can be multiple
     arrest_type = models.ForeignKey(ArrestType, on_delete=models.DO_NOTHING, null=True)
     address = models.TextField() # Violation Location
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     date_added = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -368,25 +360,29 @@ class PoliceLog(models.Model):
 
     @classmethod
     def create_dispatch(cls, media_log):
-        municipality = Municipality.objects.get(short_name=media_log['muni_short'])
-        record_type = RecordType.objects.get(display_text='Dispatch')
+        try:
+            municipality = Municipality.objects.get(short_name=media_log['muni_short'])
+        except Municipality.DoesNotExist:
+            raise ValueError(f"Unknown municipality: {media_log['muni_short']}")
+        try:
+            record_type = RecordType.objects.get(display_text='Dispatch')
+        except RecordType.DoesNotExist:
+            raise ValueError("RecordType 'Dispatch' not found — ensure initial data is loaded")
         dispatch_number = int(media_log['dispatch_number'])
 
         # 09/21/2023 
         # 02:15 AM
-        start_str = media_log['dispatch_start'].replace('\n', ' ')
-        dispatch_start = datetime.strptime(start_str, "%m/%d/%Y %I:%M %p")
-
-        stop_str = media_log['dispatch_stop'].replace('\n', ' ')
-        dispatch_stop = datetime.strptime(stop_str, "%m/%d/%Y %I:%M %p")
+        dispatch_start = timezone.make_aware(datetime.strptime(' '.join(media_log['dispatch_start'].split()), "%m/%d/%Y %I:%M %p"))
+        dispatch_stop  = timezone.make_aware(datetime.strptime(' '.join(media_log['dispatch_stop'].split()),  "%m/%d/%Y %I:%M %p"))
         
-        dispatch_type = DispatchType.get_or_create(media_log['dispatch_type'])
-        dispatch_address = media_log['address'].title()
+        dispatch_type = DispatchType.get_or_create(' '.join(media_log['dispatch_type'].split()))
+        dispatch_address = ' '.join(media_log['address'].split()).title()
 
-        if media_log['officer'] == '':
+        officer_raw = ' '.join(media_log['officer'].split())
+        if officer_raw == '':
             officer = Officer.get_or_create(municipality, 'unknown', 'unknown')
         else:
-            officer_name = split_name(media_log['officer'])
+            officer_name = split_name(officer_raw)
             officer = Officer.get_or_create(municipality, officer_name['firstname'], officer_name['lastname'])
 
         obj = cls(
@@ -399,34 +395,56 @@ class PoliceLog(models.Model):
             address=dispatch_address,
             officer=officer
         )
-        obj.save()
+
+        try:
+            with transaction.atomic():
+                obj.save()
+        except IntegrityError:
+            existing = cls.objects.filter(dispatch_number=dispatch_number).first()
+            if existing and existing.datetime_start == dispatch_start and existing.address == dispatch_address:
+                return existing  # true duplicate — skip
+            # Different record sharing the same number — offset by 100000 until unique
+            new_number = dispatch_number + 100000
+            while cls.objects.filter(dispatch_number=new_number).exists():
+                new_number += 100000
+            obj.dispatch_number = new_number
+            obj.save()
 
         return obj
 
 
     @classmethod
     def create_arrest(cls, arrest_log):
-        municipality = Municipality.objects.get(short_name=arrest_log['muni_short'])
-        record_type = RecordType.objects.get(display_text='Arrest')
+        try:
+            municipality = Municipality.objects.get(short_name=arrest_log['muni_short'])
+        except Municipality.DoesNotExist:
+            raise ValueError(f"Unknown municipality: {arrest_log['muni_short']}")
+        try:
+            record_type = RecordType.objects.get(display_text='Arrest')
+        except RecordType.DoesNotExist:
+            raise ValueError("RecordType 'Arrest' not found — ensure initial data is loaded")
         # 09/21/2023 
         # 02:15 AM
-        arrest_str = arrest_log['arrest_date'].replace('\n', ' ')
-        arrest_date = datetime.strptime(arrest_str, "%m/%d/%y %I:%M %p")
-        arrestee = Arrestee.get_or_create(arrest_log['arrestee'])
-        arrest_type = ArrestType.get_or_create(arrest_log['arrest_type'])
-        
+        arrest_date = timezone.make_aware(datetime.strptime(' '.join(arrest_log['arrest_date'].split()), "%m/%d/%y %I:%M %p"))
+
+        # Normalize whitespace on all incoming string fields
+        arrestee_data = arrest_log['arrestee']
+        arrestee_data['home_city'] = ' '.join(arrestee_data.get('home_city', '').split())
+        arrestee = Arrestee.get_or_create(arrestee_data)
+
+        arrest_type = ArrestType.get_or_create(' '.join(arrest_log['arrest_type'].split()))
+
         charges = []
         if isinstance(arrest_log['charge'], list):
             for charge_item in arrest_log['charge']:
-                charge = Charge.get_or_create(charge_item)
-                charges.append(charge)
+                charges.append(Charge.get_or_create(' '.join(charge_item.split())))
         else:
-            charges = Charge.get_or_create(arrest_log['charge'])
+            charges = [Charge.get_or_create(' '.join(arrest_log['charge'].split()))]
 
-        officer_name = split_name(arrest_log['officer'])
+        officer_name = split_name(' '.join(arrest_log['officer'].split()))
         officer = Officer.get_or_create(municipality, officer_name['firstname'], officer_name['lastname'])
 
-        arrest_address = arrest_log['address'].title()
+        arrest_address = ' '.join(arrest_log.get('address', '').split()).title()
 
         obj = cls(
             municipality=municipality,
@@ -438,9 +456,8 @@ class PoliceLog(models.Model):
             officer=officer,
         )
 
-        obj.save()
-        obj.charge.set(charges)
-        obj.save()
-
+        with transaction.atomic():
+            obj.save()
+            obj.charge.set(charges)
 
         return obj

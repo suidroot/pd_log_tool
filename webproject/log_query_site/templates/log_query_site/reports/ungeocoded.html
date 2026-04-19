@@ -1,0 +1,65 @@
+{% extends "log_query_site/base.html" %}
+
+{% block title %}Un-geocoded Records — Reports{% endblock %}
+{% block meta_description %}Records without geocoordinates{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:baseline; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+  <h1 style="margin:0;">Un-geocoded Records <span class="badge">{{ total }}</span></h1>
+  <a href="/reports/" style="color:var(--text-muted); font-size:14px;">← All Reports</a>
+</div>
+
+<!-- Filter -->
+<div class="card" style="margin-bottom:24px;">
+  <form method="get" action="">
+    <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+      <span class="field-label" style="margin:0;">Record Type</span>
+      <div class="radio-group" style="flex-direction:row; gap:20px;">
+        <label><input type="radio" name="record_type" value="all"      {% if record_type_filter == "all" %}checked{% endif %}> All</label>
+        <label><input type="radio" name="record_type" value="dispatch" {% if record_type_filter == "dispatch" %}checked{% endif %}> Dispatch</label>
+        <label><input type="radio" name="record_type" value="arrest"   {% if record_type_filter == "arrest" %}checked{% endif %}> Arrest</label>
+      </div>
+      <input type="submit" value="Filter">
+    </div>
+  </form>
+</div>
+
+{% if total == 0 %}
+<div class="card" style="text-align:center; color:#2d8a4e; padding:32px; font-weight:600;">
+  All records have been geocoded.
+</div>
+{% else %}
+<div class="card" style="padding:0;">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>Date / Start</th>
+          <th>Dispatch #</th>
+          <th>Call Type</th>
+          <th>Arrest Type</th>
+          <th>Officer</th>
+          <th>Address</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+        <tr>
+          <td>{{ r.id }}</td>
+          <td>{{ r.record_type }}</td>
+          <td style="white-space:nowrap;">{{ r.datetime_start|default:"—" }}</td>
+          <td>{{ r.dispatch_number|default:"—" }}</td>
+          <td>{{ r.dispatch_type|default:"—" }}</td>
+          <td>{{ r.arrest_type|default:"—" }}</td>
+          <td style="white-space:nowrap;">{{ r.officer }}</td>
+          <td>{{ r.address }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

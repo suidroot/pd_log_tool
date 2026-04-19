@@ -18,20 +18,25 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from log_query_site import views
+from log_query_site import reports
 
 urlpatterns = [
     path('', views.index, name='index'),
-    path('about', views.about_page, name='about_page'),
     path('about/', views.about_page, name='about_page'),
     path('admin/', admin.site.urls),
     path('add/arrest/', views.add_arrest, name='add_arrest_log'),
     path('add/dispatch/', views.add_dispatch, name='add_dispatch'),
-    path('search', views.search_records, name='search_records'),
     path('search/', views.search_records, name='search_records'),
-    path('results', views.search_results, name='results'),
     path('results/', views.search_results, name='results'),
-    path('logout/', views.logout_page, name='results'),
-    path('logout/', views.logout_page, name='results'),
+    path('results/export/', views.export_csv, name='export_csv'),
+    path('records/<int:record_id>/geocode/', views.trigger_geocode, name='trigger_geocode'),
+    path('geocoder/pause/', views.toggle_geocoder_pause, name='toggle_geocoder_pause'),
+    path('logout/', views.logout_page, name='logout_confirm'),
+    path('reports/', reports.reports_index, name='reports'),
+    path('reports/data-gaps/', reports.report_data_gaps, name='report_data_gaps'),
+    path('reports/activity/', reports.report_activity_chart, name='report_activity_chart'),
+    path('reports/ungeocoded/', reports.report_ungeocoded, name='report_ungeocoded'),
+    path('reports/geocode-queue/', reports.report_geocode_queue, name='report_geocode_queue'),
     path("accounts/", include("django.contrib.auth.urls")),
 ]
 
