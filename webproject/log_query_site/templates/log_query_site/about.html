@@ -1,30 +1,43 @@
 {% extends "log_query_site/base.html" %}
 
-{% block title %}About{% endblock %}
-
-{% block meta_description %}PWM Police calls{% endblock %}
-
+{% block title %}About — PWM Police Log DB{% endblock %}
+{% block meta_description %}PWM Police log database statistics{% endblock %}
 {% block meta_keywords %}portland, police, maine{% endblock %}
 
 {% block content %}
+<h1>Database Statistics</h1>
 
-This is a tool to search and archive to Police logs
+<div class="grid-2">
+  <div class="card">
+    <h2>Record Counts</h2>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td>Total Records</td><td><strong>{{ counts.all_records }}</strong></td></tr>
+          <tr><td>Un-geocoded Records</td><td>{{ counts.geocoded_records }}</td></tr>
+          <tr><td>Municipalities</td><td>{{ counts.municipalities }}</td></tr>
+          <tr><td>Dispatch Types</td><td>{{ counts.dispatch_types }}</td></tr>
+          <tr><td>Arrest Types</td><td>{{ counts.arrest_types }}</td></tr>
+          <tr><td>Charges</td><td>{{ counts.charges }}</td></tr>
+          <tr><td>Officers</td><td>{{ counts.officers }}</td></tr>
+          <tr><td>Arrestees</td><td>{{ counts.arrestees }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-<div class="about_counts_container", style='text-align:center';>
-
-<table>
-<tr><td>All Records</td><td>{{counts.all_records}}</td></tr>
-<tr><td>Municipalities</td><td>{{counts.municipalities}}</td></tr>
-<tr><td>Arrest Types</td><td>{{counts.arrest_types}}</td></tr>
-<tr><td>Officers</td><td>{{counts.officers}}</td></tr>
-<tr><td>Arrestees</td><td>{{counts.arrestees}}</td></tr>
-<tr><td>Charges</td><td>{{counts.charges}}</td></tr>
-<tr><td>Dispatch Types</td><td>{{counts.dispatch_types}}</td></tr>
-<tr><td>Earliest Recent Dispatch</td><td>{{counts.first_dispatch_date}}</td></tr>
-<tr><td>Most Recent Dispatch</td><td>{{counts.latest_dispatch_date}}</td></tr>
-<tr><td>Earliest Recent Arrest</td><td>{{counts.first_arrest_date}}</td></tr>
-<tr><td>Most Recent Arrest</td><td>{{counts.latest_arrest_date}}</td></tr>
-
-</table>
+  <div class="card">
+    <h2>Date Range</h2>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td>First Dispatch</td><td>{{ counts.first_dispatch_date|default:"—" }}</td></tr>
+          <tr><td>Latest Dispatch</td><td>{{ counts.latest_dispatch_date|default:"—" }}</td></tr>
+          <tr><td>First Arrest</td><td>{{ counts.first_arrest_date|default:"—" }}</td></tr>
+          <tr><td>Latest Arrest</td><td>{{ counts.latest_arrest_date|default:"—" }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 {% endblock %}

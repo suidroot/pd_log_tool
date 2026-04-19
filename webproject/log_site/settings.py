@@ -121,3 +121,35 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ── Map tile provider ──────────────────────────────────────────────────────────
+# Set MAP_TILE_PROVIDER to one of the keys below, or override MAP_TILE_URL /
+# MAP_TILE_ATTRIBUTION directly for a custom provider.
+MAP_TILE_PROVIDERS = {
+    "osm": {
+        "url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "attribution": '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        "subdomains": "abc",
+        "maxZoom": 19,
+    },
+    "carto-light": {
+        "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        "attribution": '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        "subdomains": "abcd",
+        "maxZoom": 20,
+    },
+    "carto-dark": {
+        "url": "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        "attribution": '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        "subdomains": "abcd",
+        "maxZoom": 20,
+    },
+}
+
+MAP_TILE_PROVIDER = os.environ.get("MAP_TILE_PROVIDER", "carto-light")
+
+# ── Celery ────────────────────────────────────────────────────────────────────
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']

@@ -1,49 +1,196 @@
 {% extends "log_query_site/base.html" %}
 
-{% block title %}Arrest Log Search Results{% endblock %}
-
-{% block meta_description %}Arrest Log Search Results{% endblock %}
-
+{% block title %}Search Results — PWM Police Log DB{% endblock %}
+{% block extra_style %}<style>.content { max-width: none; }</style>{% endblock %}
+{% block meta_description %}Police log search results{% endblock %}
 {% block meta_keywords %}portland, police, maine{% endblock %}
 
 {% block content %}
 
-<p>There are {{count}} Results</p>
+{# Single replay form — shared by Export CSV and all pagination buttons via formaction #}
+<form id="replay-form" method="post" style="display:none;">
+  {% csrf_token %}
+  {% for key, value in post_params %}
+    <input type="hidden" name="{{ key }}" value="{{ value }}">
+  {% endfor %}
+  <input type="hidden" name="page" id="replay-page" value="1">
+</form>
 
-<table>
-    <thead>
+<div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px;">
+  <h1 style="margin:0;">
+    Results
+    <span class="badge">{{ count }}</span>
+  </h1>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button type="submit" form="replay-form" formaction="/results/export/" class="btn btn-secondary">Export CSV</button>
+    <a class="btn btn-secondary" href="/search/">New Search</a>
+  </div>
+</div>
+
+<div class="card" style="padding:0;">
+  <div class="table-wrap">
+    <table>
+      <thead>
         <tr>
-            <th>Record Type</th>
-            <th>Dispatch Number</th>
-            <th>Arrest Date</th>
-            <th>Call Stop</th>
-            <th>Arrestee</th>
-            <th>Call Type</th>
-            <th>Charges</th>
-            <th>Arrest Type</th>
-            <th>Officer</th>
-            <th>Address</th>
+          <th>Type</th>
+          <th>Dispatch #</th>
+          <th>Date / Start</th>
+          <th>Call Stop</th>
+          <th>Arrestee</th>
+          <th>Call Type</th>
+          <th>Charges</th>
+          <th>Arrest Type</th>
+          <th>Officer</th>
+          <th>Address</th>
         </tr>
-    </thead>
-    <tbody>
-{% for result in results %}
-<tr>
-    <td>{{result.record_type}}</td>
-    <td>{{result.dispatch_number}}</td>
-    <td>{{result.datetime_start}}</td>
-    <td>{{result.datetime_stop}}</td>
-    <td>{{result.arrestee}}</td>
-    <td>{{result.dispatch_type}}</td>
-    <td>{% for charge in result.charge.all %}
-        {{charge}}<br>
+      </thead>
+      <tbody>
+        {% for result in results %}
+        <tr>
+          <td>{{ result.record_type }}</td>
+          <td>{{ result.dispatch_number|default:"—" }}</td>
+          <td style="white-space:nowrap;">{{ result.datetime_start }}</td>
+          <td style="white-space:nowrap;">{{ result.datetime_stop|default:"—" }}</td>
+          <td>{{ result.arrestee|default:"—" }}</td>
+          <td>{{ result.dispatch_type|default:"—" }}</td>
+          <td>
+            {% for charge in result.charge.all %}
+              {{ charge }}{% if not forloop.last %}<br>{% endif %}
+            {% empty %}—
+            {% endfor %}
+          </td>
+          <td>{{ result.arrest_type|default:"—" }}</td>
+          <td style="white-space:nowrap;">{{ result.officer }}</td>
+          <td>
+            {{ result.address }}
+            {% if result.latitude is None %}
+            <button
+              class="geocode-btn"
+              data-id="{{ result.id }}"
+              data-url="/records/{{ result.id }}/geocode/"
+              style="display:block; margin-top:4px; font-size:11px; padding:2px 8px; background:#fff; border:1px solid var(--border); border-radius:4px; color:var(--text-muted); cursor:pointer;">
+              &#128204; Geocode
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="10" style="text-align:center; color:var(--text-muted); padding:32px;">
+            No records matched your search.
+          </td>
+        </tr>
         {% endfor %}
-    </td>
-    <td>{{result.arrest_type}}</td>
-    <td>{{result.officer}}</td>
-    <td>{{result.address}}</td>
-</tr>
-{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 
-</tbody>
-</table>
+{% if paginator.num_pages > 1 %}
+<div style="display:flex; justify-content:center; align-items:center; gap:4px; margin-top:20px; flex-wrap:wrap;">
+
+  {% if page_obj.has_previous %}
+  <button type="submit" form="replay-form" formaction="/results/"
+          onclick="document.getElementById('replay-page').value='{{ page_obj.previous_page_number }}'"
+          class="btn btn-secondary" style="padding:7px 14px;">&#8592; Prev</button>
+  {% else %}
+  <button class="btn btn-secondary" style="padding:7px 14px; opacity:.4;" disabled>&#8592; Prev</button>
+  {% endif %}
+
+  {% for p in paginator.page_range %}
+    {% if p == page_obj.number %}
+    <button class="btn" style="padding:7px 13px; cursor:default;">{{ p }}</button>
+    {% elif p == 1 or p == paginator.num_pages or p >= page_obj.number|add:"-2" and p <= page_obj.number|add:"2" %}
+    <button type="submit" form="replay-form" formaction="/results/"
+            onclick="document.getElementById('replay-page').value='{{ p }}'"
+            class="btn btn-secondary" style="padding:7px 13px;">{{ p }}</button>
+    {% elif p == page_obj.number|add:"-3" or p == page_obj.number|add:"3" %}
+    <span style="color:var(--text-muted); padding:0 4px;">…</span>
+    {% endif %}
+  {% endfor %}
+
+  {% if page_obj.has_next %}
+  <button type="submit" form="replay-form" formaction="/results/"
+          onclick="document.getElementById('replay-page').value='{{ page_obj.next_page_number }}'"
+          class="btn btn-secondary" style="padding:7px 14px;">Next &#8594;</button>
+  {% else %}
+  <button class="btn btn-secondary" style="padding:7px 14px; opacity:.4;" disabled>Next &#8594;</button>
+  {% endif %}
+
+</div>
+<div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
+  Page {{ page_obj.number }} of {{ paginator.num_pages }}
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.geocode-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Queuing…';
+
+  var csrfToken = '{{ csrf_token }}';
+  fetch(btn.dataset.url, {
+    method: 'POST',
+    headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/json'},
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (data) {
+    if (data.status === 'queued') {
+      btn.textContent = '✓ Queued';
+      btn.style.color = '#2d8a4e';
+      btn.style.borderColor = '#2d8a4e';
+    } else if (data.status === 'already_geocoded') {
+      btn.textContent = '✓ Done';
+      btn.style.color = '#2d8a4e';
+    } else {
+      btn.textContent = 'Error';
+      btn.style.color = '#c0392b';
+      btn.disabled = false;
+    }
+  })
+  .catch(function () {
+    btn.textContent = 'Error';
+    btn.style.color = '#c0392b';
+    btn.disabled = false;
+  });
+});
+</script>
+
+{% if map_points_json != "[]" %}
+<div class="card" style="padding:20px 24px; margin-top:20px;">
+  <h2 style="margin-bottom:14px;">Map</h2>
+  <div id="result-map" style="height:420px; border-radius:6px; overflow:hidden;"></div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  var points = {{ map_points_json|safe }};
+  if (!points.length) return;
+
+  var map = L.map('result-map');
+  L.tileLayer('{{ map_tile.url }}', {
+    attribution: '{{ map_tile.attribution|safe }}',
+    subdomains: '{{ map_tile.subdomains }}',
+    maxZoom: {{ map_tile.maxZoom }}
+  }).addTo(map);
+
+  var bounds = [];
+  points.forEach(function (p) {
+    var popup = '<strong>' + p.label + '</strong><br>' + p.address + '<br><small>' + p.date + '</small>';
+    L.marker([p.lat, p.lon]).addTo(map).bindPopup(popup);
+    bounds.push([p.lat, p.lon]);
+  });
+
+  if (bounds.length === 1) {
+    map.setView(bounds[0], 15);
+  } else {
+    map.fitBounds(bounds, {padding: [32, 32]});
+  }
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -2,3 +2,6 @@ Django
 decouple
 psycopg[binary]
 sqlparse
+requests
+celery[redis]
+redis

@@ -1,0 +1,3 @@
+[submodule "log_loaders/PWM"]
+	path = log_loaders/PWM
+	url = https://github.com/suidroot/PWM-Police-Log-Downloader.git

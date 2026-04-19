@@ -1,0 +1,88 @@
+{% if result.stats %}
+<div style="margin-bottom:32px;">
+  <h2 style="margin-bottom:14px;">{{ label }} Records</h2>
+
+  <!-- Stats row -->
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
+
+    <div class="card" style="padding:16px 18px; text-align:center;">
+      <div style="font-size:26px; font-weight:700; color:var(--text);">{{ result.stats.coverage_pct }}%</div>
+      <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Coverage</div>
+    </div>
+
+    <div class="card" style="padding:16px 18px; text-align:center;">
+      <div style="font-size:26px; font-weight:700; color:var(--text);">{{ result.stats.total_days }}</div>
+      <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Days Analysed</div>
+    </div>
+
+    <div class="card" style="padding:16px 18px; text-align:center;">
+      <div style="font-size:26px; font-weight:700; color:var(--accent);">{{ result.stats.days_with_records }}</div>
+      <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Days With Records</div>
+    </div>
+
+    <div class="card" style="padding:16px 18px; text-align:center;">
+      <div style="font-size:26px; font-weight:700; color:{% if result.stats.missing_days > 0 %}#c0392b{% else %}#2d8a4e{% endif %};">{{ result.stats.missing_days }}</div>
+      <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Missing Days</div>
+    </div>
+
+    <div class="card" style="padding:16px 18px; text-align:center;">
+      <div style="font-size:26px; font-weight:700; color:var(--text);">{{ result.stats.gap_count }}</div>
+      <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Gaps</div>
+    </div>
+
+    <div class="card" style="padding:16px 18px; text-align:center;">
+      <div style="font-size:26px; font-weight:700; color:var(--text);">{{ result.stats.longest_gap }}</div>
+      <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;">Longest Gap (days)</div>
+    </div>
+
+  </div>
+
+  <div style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+    Analysis period: <strong>{{ result.stats.analysis_start }}</strong> — <strong>{{ result.stats.analysis_end }}</strong>
+  </div>
+
+  {% if result.gaps %}
+  <div class="card" style="padding:0;">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Gap Start</th>
+            <th>Gap End</th>
+            <th>Missing Days</th>
+            <th>Severity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for gap in result.gaps %}
+          <tr>
+            <td>{{ gap.start }}</td>
+            <td>{{ gap.end }}</td>
+            <td><strong>{{ gap.days }}</strong></td>
+            <td>
+              {% if gap.days == 1 %}
+                <span style="color:#7d6608; background:#fef9c3; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:600;">1 day</span>
+              {% elif gap.days <= 7 %}
+                <span style="color:#9a3412; background:#fed7aa; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:600;">{{ gap.days }} days</span>
+              {% else %}
+                <span style="color:#fff; background:#c0392b; padding:2px 8px; border-radius:12px; font-size:12px; font-weight:600;">{{ gap.days }} days</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center; color:#2d8a4e; padding:24px; font-weight:600;">
+    No gaps found — complete coverage for this period.
+  </div>
+  {% endif %}
+
+</div>
+{% else %}
+<div class="card" style="text-align:center; color:var(--text-muted); padding:24px;">
+  No {{ label|lower }} records found for the selected period.
+</div>
+{% endif %}
