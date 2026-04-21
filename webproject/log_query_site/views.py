@@ -241,15 +241,17 @@ def _filter_queryset(raw):
         results = results.filter(address__icontains=address)
 
     sort = raw.get("sort_radio", "datetime_start")
+    direction = raw.get("sort_direction", "desc")
+    prefix = "" if direction == "asc" else "-"
     order_map = {
-        "datetime_start": "-datetime_start",
-        "datetime_stop":  "-datetime_stop",
-        "arrestee":       "arrestee",
-        "arrest_type":    "arrest_type",
-        "officer":        "officer",
-        "dispatch_type":  "dispatch_type",
+        "datetime_start": f"{prefix}datetime_start",
+        "datetime_stop":  f"{prefix}datetime_stop",
+        "arrestee":       f"{prefix}arrestee",
+        "arrest_type":    f"{prefix}arrest_type",
+        "officer":        f"{prefix}officer",
+        "dispatch_type":  f"{prefix}dispatch_type",
     }
-    results = results.order_by(order_map.get(sort, "-datetime_start"))
+    results = results.order_by(order_map.get(sort, f"{prefix}datetime_start"))
     return results
 
 

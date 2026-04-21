@@ -152,9 +152,18 @@
             <label><input type="radio" name="sort_radio" value="arrestee"> Arrestee</label>
           </div>
         </div>
-        <div class="form-group" style="max-width:180px;">
-          <label for="result_limit">Result Limit</label>
-          <input type="number" id="result_limit" name="result_limit" value="50" min="1" max="500">
+        <div>
+          <div class="form-group">
+            <span class="field-label">Order</span>
+            <div class="radio-group" style="flex-direction:row; gap:20px;">
+              <label><input type="radio" name="sort_direction" value="desc" checked> Descending</label>
+              <label><input type="radio" name="sort_direction" value="asc"> Ascending</label>
+            </div>
+          </div>
+          <div class="form-group" style="max-width:180px;">
+            <label for="result_limit">Result Limit</label>
+            <input type="number" id="result_limit" name="result_limit" value="50" min="1" max="500">
+          </div>
         </div>
       </div>
 

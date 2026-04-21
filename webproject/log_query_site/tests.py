@@ -452,3 +452,27 @@ class SearchFilterTests(TestCase):
     def test_unknown_address_returns_empty(self):
         qs = self._qs({'address': 'Nowhere Lane'})
         self.assertEqual(qs.count(), 0)
+
+    def _make_dated(self, number, date_str):
+        return PoliceLog.create_dispatch({
+            **_DISPATCH_PAYLOAD,
+            'dispatch_number': number,
+            'dispatch_start': date_str,
+            'dispatch_stop':  date_str,
+            'muni_short': 'PWM',
+            'address': f'{number} Test St',
+        })
+
+    def test_sort_descending_by_default(self):
+        self._make_dated('11001', '01/01/2022 08:00 AM')
+        self._make_dated('11002', '06/15/2023 12:00 PM')
+        qs = self._qs({'sort_radio': 'datetime_start'})
+        dates = list(qs.values_list('datetime_start', flat=True))
+        self.assertEqual(dates, sorted(dates, reverse=True))
+
+    def test_sort_ascending(self):
+        self._make_dated('11003', '01/01/2022 08:00 AM')
+        self._make_dated('11004', '06/15/2023 12:00 PM')
+        qs = self._qs({'sort_radio': 'datetime_start', 'sort_direction': 'asc'})
+        dates = list(qs.values_list('datetime_start', flat=True))
+        self.assertEqual(dates, sorted(dates))
