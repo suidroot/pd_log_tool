@@ -359,6 +359,22 @@ def toggle_geocoder_pause(request):
 
 @login_required
 @require_POST
+def queue_all_ungeocoded(request):
+    ids = list(
+        PoliceLog.objects.filter(latitude__isnull=True).values_list('id', flat=True)
+    )
+    queued = 0
+    try:
+        for pk in ids:
+            geocode_record.delay(pk)
+            queued += 1
+    except Exception:
+        return JsonResponse({"status": "error", "queued": queued, "message": "Queue unavailable"}, status=503)
+    return JsonResponse({"status": "queued", "queued": queued})
+
+
+@login_required
+@require_POST
 def trigger_geocode(request, record_id):
     record = get_object_or_404(PoliceLog, pk=record_id)
 

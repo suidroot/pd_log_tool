@@ -7,6 +7,16 @@ from .geocoder_control import is_paused
 logger = logging.getLogger(__name__)
 
 
+def _log_geocode_error(record, error_type, detail=''):
+    from .models import GeocodeError
+    GeocodeError.objects.create(
+        record=record,
+        address=record.address,
+        error_type=error_type,
+        detail=detail,
+    )
+
+
 @shared_task(bind=True, max_retries=5, default_retry_delay=120, rate_limit='1/s')
 def geocode_record(self, record_id):
     if is_paused():
@@ -46,12 +56,22 @@ def geocode_record(self, record_id):
                 "geocode_record: dropping record %s (%s) after rate-limit retry — %s",
                 record_id, record.address, e,
             )
+            _log_geocode_error(record, 'rate_limited', str(e))
             return
         raise self.retry(exc=e, countdown=600, max_retries=1)
     except GeocoderUnavailable as e:
+        if self.request.retries >= self.max_retries:
+            logger.error(
+                "geocode_record: dropping record %s (%s) after network retries — %s",
+                record_id, record.address, e,
+            )
+            _log_geocode_error(record, 'network_error', str(e))
+            return
         raise self.retry(exc=e)
 
     if coords:
         record.latitude, record.longitude = coords
         record.save(update_fields=['latitude', 'longitude'])
-    # None means address not found — leave ungeocoded, do not retry
+    else:
+        # Nominatim returned no result — address not found
+        _log_geocode_error(record, 'not_found')

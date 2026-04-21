@@ -9,19 +9,24 @@
   <a href="/reports/" style="color:var(--text-muted); font-size:14px;">← All Reports</a>
 </div>
 
-<!-- Filter -->
+<!-- Filter + Queue All -->
 <div class="card" style="margin-bottom:24px;">
-  <form method="get" action="">
-    <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-      <span class="field-label" style="margin:0;">Record Type</span>
-      <div class="radio-group" style="flex-direction:row; gap:20px;">
-        <label><input type="radio" name="record_type" value="all"      {% if record_type_filter == "all" %}checked{% endif %}> All</label>
-        <label><input type="radio" name="record_type" value="dispatch" {% if record_type_filter == "dispatch" %}checked{% endif %}> Dispatch</label>
-        <label><input type="radio" name="record_type" value="arrest"   {% if record_type_filter == "arrest" %}checked{% endif %}> Arrest</label>
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+    <form method="get" action="">
+      <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+        <span class="field-label" style="margin:0;">Record Type</span>
+        <div class="radio-group" style="flex-direction:row; gap:20px;">
+          <label><input type="radio" name="record_type" value="all"      {% if record_type_filter == "all" %}checked{% endif %}> All</label>
+          <label><input type="radio" name="record_type" value="dispatch" {% if record_type_filter == "dispatch" %}checked{% endif %}> Dispatch</label>
+          <label><input type="radio" name="record_type" value="arrest"   {% if record_type_filter == "arrest" %}checked{% endif %}> Arrest</label>
+        </div>
+        <input type="submit" value="Filter">
       </div>
-      <input type="submit" value="Filter">
-    </div>
-  </form>
+    </form>
+    {% if total > 0 %}
+    <button id="queue-all-btn" onclick="queueAll(this)">Queue All for Geocoding</button>
+    {% endif %}
+  </div>
 </div>
 
 {% if total == 0 %}
@@ -61,5 +66,46 @@
     </table>
   </div>
 </div>
+
+<!-- Pagination -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div style="display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap;">
+  {% if page_obj.has_previous %}
+    <a href="?record_type={{ record_type_filter }}&page={{ page_obj.previous_page_number }}">&laquo; Prev</a>
+  {% endif %}
+  <span style="color:var(--text-muted);">
+    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  </span>
+  {% if page_obj.has_next %}
+    <a href="?record_type={{ record_type_filter }}&page={{ page_obj.next_page_number }}">Next &raquo;</a>
+  {% endif %}
+</div>
 {% endif %}
+
+{% endif %}
+
+<script>
+function queueAll(btn) {
+  if (!confirm('Queue all {{ total }} un-geocoded records for geocoding?')) return;
+  btn.disabled = true;
+  btn.textContent = 'Queuing…';
+  fetch('{% url "queue_all_ungeocoded" %}', {
+    method: 'POST',
+    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'queued') {
+      btn.textContent = data.queued + ' records queued';
+    } else {
+      btn.textContent = 'Error: ' + (data.message || 'unknown');
+      btn.disabled = false;
+    }
+  })
+  .catch(() => {
+    btn.textContent = 'Request failed';
+    btn.disabled = false;
+  });
+}
+</script>
 {% endblock %}

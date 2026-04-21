@@ -31,12 +31,14 @@ urlpatterns = [
     path('results/export/', views.export_csv, name='export_csv'),
     path('records/<int:record_id>/geocode/', views.trigger_geocode, name='trigger_geocode'),
     path('geocoder/pause/', views.toggle_geocoder_pause, name='toggle_geocoder_pause'),
+    path('geocoder/queue-all/', views.queue_all_ungeocoded, name='queue_all_ungeocoded'),
     path('logout/', views.logout_page, name='logout_confirm'),
     path('reports/', reports.reports_index, name='reports'),
     path('reports/data-gaps/', reports.report_data_gaps, name='report_data_gaps'),
     path('reports/activity/', reports.report_activity_chart, name='report_activity_chart'),
     path('reports/ungeocoded/', reports.report_ungeocoded, name='report_ungeocoded'),
     path('reports/geocode-queue/', reports.report_geocode_queue, name='report_geocode_queue'),
+    path('reports/geocode-errors/', reports.report_geocode_errors, name='report_geocode_errors'),
     path("accounts/", include("django.contrib.auth.urls")),
 ]
 

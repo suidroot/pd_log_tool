@@ -324,6 +324,32 @@ class Arrestee(models.Model):
 
         return obj
 
+class GeocodeError(models.Model):
+    NOT_FOUND = 'not_found'
+    RATE_LIMITED = 'rate_limited'
+    NETWORK_ERROR = 'network_error'
+    ERROR_TYPE_CHOICES = [
+        (NOT_FOUND, 'Not Found'),
+        (RATE_LIMITED, 'Rate Limited'),
+        (NETWORK_ERROR, 'Network Error'),
+    ]
+
+    record = models.ForeignKey(
+        'PoliceLog', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='geocode_errors',
+    )
+    address = models.TextField()
+    error_type = models.CharField(max_length=20, choices=ERROR_TYPE_CHOICES)
+    detail = models.TextField(blank=True, default='')
+    attempted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-attempted_at']
+
+    def __str__(self):
+        return f"{self.get_error_type_display()} — {self.address} ({self.attempted_at:%Y-%m-%d %H:%M})"
+
+
 class APIKey(models.Model):
     name = models.CharField(max_length=100)
     prefix = models.CharField(max_length=8, unique=True)

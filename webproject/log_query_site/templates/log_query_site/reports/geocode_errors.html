@@ -1,0 +1,81 @@
+{% extends "log_query_site/base.html" %}
+
+{% block title %}Geocoding Errors — Reports{% endblock %}
+{% block meta_description %}Addresses that failed geocoding{% endblock %}
+
+{% block content %}
+<div style="display:flex; align-items:baseline; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+  <h1 style="margin:0;">Geocoding Errors <span class="badge">{{ total }}</span></h1>
+  <a href="/reports/" style="color:var(--text-muted); font-size:14px;">← All Reports</a>
+</div>
+
+<!-- Filter -->
+<div class="card" style="margin-bottom:24px;">
+  <form method="get" action="">
+    <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+      <span class="field-label" style="margin:0;">Error Type</span>
+      <div class="radio-group" style="flex-direction:row; gap:20px;">
+        <label><input type="radio" name="error_type" value="all" {% if error_type_filter == "all" %}checked{% endif %}> All</label>
+        {% for value, label in error_type_choices %}
+        <label><input type="radio" name="error_type" value="{{ value }}" {% if error_type_filter == value %}checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+      </div>
+      <input type="submit" value="Filter">
+    </div>
+  </form>
+</div>
+
+{% if total == 0 %}
+<div class="card" style="text-align:center; color:#2d8a4e; padding:32px; font-weight:600;">
+  No geocoding errors recorded.
+</div>
+{% else %}
+<div class="card" style="padding:0;">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Error Type</th>
+          <th>Address</th>
+          <th>Record ID</th>
+          <th>Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in errors %}
+        <tr>
+          <td style="white-space:nowrap;">{{ e.attempted_at|date:"Y-m-d H:i" }}</td>
+          <td><span class="badge">{{ e.get_error_type_display }}</span></td>
+          <td>{{ e.address }}</td>
+          <td>
+            {% if e.record %}
+              <a href="/search/?id={{ e.record_id }}">{{ e.record_id }}</a>
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td style="color:var(--text-muted); font-size:13px;">{{ e.detail|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div style="display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap;">
+  {% if page_obj.has_previous %}
+    <a href="?error_type={{ error_type_filter }}&page={{ page_obj.previous_page_number }}">&laquo; Prev</a>
+  {% endif %}
+  <span style="color:var(--text-muted);">
+    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  </span>
+  {% if page_obj.has_next %}
+    <a href="?error_type={{ error_type_filter }}&page={{ page_obj.next_page_number }}">Next &raquo;</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

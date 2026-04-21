@@ -11,6 +11,7 @@ from .models import (
     Officer,
     Arrestee,
     APIKey,
+    GeocodeError,
 )
 
 admin.site.register(Municipality)
@@ -22,6 +23,13 @@ admin.site.register(ArrestType)
 admin.site.register(Charge)
 admin.site.register(Officer)
 admin.site.register(Arrestee)
+
+
+@admin.register(GeocodeError)
+class GeocodeErrorAdmin(admin.ModelAdmin):
+    list_display = ('attempted_at', 'error_type', 'address', 'record')
+    list_filter = ('error_type',)
+    readonly_fields = ('attempted_at', 'record', 'address', 'error_type', 'detail')
 
 
 @admin.register(APIKey)

@@ -9,7 +9,7 @@ from django.shortcuts import render
 
 import redis as redis_client
 
-from .models import PoliceLog, RecordType
+from .models import PoliceLog, RecordType, GeocodeError
 from .geocoder_control import is_paused
 
 
@@ -179,6 +179,8 @@ def report_geocode_queue(request):
 
 @login_required
 def report_ungeocoded(request):
+    from django.core.paginator import Paginator
+
     record_type_filter = request.GET.get('record_type', 'all')
 
     dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
@@ -194,13 +196,40 @@ def report_ungeocoded(request):
         qs = qs.filter(record_type=arrest_type)
 
     total = qs.count()
+    paginator = Paginator(qs, 100)
+    page = paginator.get_page(request.GET.get('page'))
 
     context = {
-        'records': qs,
+        'records': page,
+        'page_obj': page,
         'total': total,
         'record_type_filter': record_type_filter,
     }
     return render(request, 'log_query_site/reports/ungeocoded.html', context)
+
+
+@login_required
+def report_geocode_errors(request):
+    from django.core.paginator import Paginator
+
+    error_type_filter = request.GET.get('error_type', 'all')
+
+    qs = GeocodeError.objects.select_related('record')
+    if error_type_filter != 'all':
+        qs = qs.filter(error_type=error_type_filter)
+
+    total = qs.count()
+    paginator = Paginator(qs, 100)
+    page = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'errors': page,
+        'page_obj': page,
+        'total': total,
+        'error_type_filter': error_type_filter,
+        'error_type_choices': GeocodeError.ERROR_TYPE_CHOICES,
+    }
+    return render(request, 'log_query_site/reports/geocode_errors.html', context)
 
 
 @login_required
