@@ -39,6 +39,20 @@
         </div>
       </div>
 
+      <!-- Municipality -->
+      {% if municipalities|length > 1 %}
+      <div class="form-group">
+        <span class="field-label">Municipality <small style="font-weight:400;text-transform:none;letter-spacing:0;">(leave blank for all)</small></span>
+        <div class="radio-group" style="flex-direction:row; flex-wrap:wrap; gap:16px;">
+          {% for muni in municipalities %}
+          <label>
+            <input type="checkbox" name="municipality" value="{{ muni.id }}"> {{ muni.display_text }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
       <hr class="divider">
 
       <!-- Date ranges -->

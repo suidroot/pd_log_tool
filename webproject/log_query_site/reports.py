@@ -10,7 +10,7 @@ from django.shortcuts import render
 import redis as redis_client
 
 from django.db.models import Subquery, OuterRef
-from .models import PoliceLog, RecordType, GeocodeError
+from .models import PoliceLog, RecordType, GeocodeError, Municipality
 from .geocoder_control import is_paused
 
 
@@ -246,9 +246,17 @@ def report_activity_chart(request):
     record_type_filter = request.GET.get('record_type', 'all')
     start_date = _parse_date(request.GET.get('start_date', ''))
     end_date   = _parse_date(request.GET.get('end_date', ''))
+    selected_muni_ids = request.GET.getlist('municipality') or []
 
+    all_municipalities = Municipality.objects.order_by('display_text')
     dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
     arrest_type   = RecordType.objects.filter(display_text='Arrest').first()
+
+    def _base_qs(record_type_obj):
+        qs = PoliceLog.objects.filter(record_type=record_type_obj)
+        if selected_muni_ids:
+            qs = qs.filter(municipality__in=selected_muni_ids)
+        return qs
 
     def daily_counts(qs, start, end):
         if start:
@@ -269,12 +277,10 @@ def report_activity_chart(request):
     dispatch_data = arrest_data = None
 
     if record_type_filter in ('dispatch', 'all') and dispatch_type:
-        qs = PoliceLog.objects.filter(record_type=dispatch_type)
-        dispatch_data = daily_counts(qs, start_date, end_date)
+        dispatch_data = daily_counts(_base_qs(dispatch_type), start_date, end_date)
 
     if record_type_filter in ('arrest', 'all') and arrest_type:
-        qs = PoliceLog.objects.filter(record_type=arrest_type)
-        arrest_data = daily_counts(qs, start_date, end_date)
+        arrest_data = daily_counts(_base_qs(arrest_type), start_date, end_date)
 
     context = {
         'record_type_filter': record_type_filter,
@@ -282,6 +288,8 @@ def report_activity_chart(request):
         'end_date':   end_date.isoformat()   if end_date   else '',
         'dispatch_json': json.dumps(dispatch_data) if dispatch_data else 'null',
         'arrest_json':   json.dumps(arrest_data)   if arrest_data   else 'null',
+        'all_municipalities': all_municipalities,
+        'selected_muni_ids': [str(i) for i in selected_muni_ids],
     }
     return render(request, 'log_query_site/reports/activity_chart.html', context)
 
@@ -291,20 +299,26 @@ def report_data_gaps(request):
     record_type_filter = request.GET.get('record_type', 'all')
     start_date = _parse_date(request.GET.get('start_date', ''))
     end_date = _parse_date(request.GET.get('end_date', ''))
+    selected_muni_ids = request.GET.getlist('municipality') or []
 
+    all_municipalities = Municipality.objects.order_by('display_text')
     dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
     arrest_type = RecordType.objects.filter(display_text='Arrest').first()
+
+    def _base_qs(record_type_obj):
+        qs = PoliceLog.objects.filter(record_type=record_type_obj)
+        if selected_muni_ids:
+            qs = qs.filter(municipality__in=selected_muni_ids)
+        return qs
 
     dispatch_result = arrest_result = None
 
     if record_type_filter in ('dispatch', 'all') and dispatch_type:
-        qs = PoliceLog.objects.filter(record_type=dispatch_type)
-        gaps, stats = _find_gaps(qs, start_date, end_date)
+        gaps, stats = _find_gaps(_base_qs(dispatch_type), start_date, end_date)
         dispatch_result = {'gaps': gaps, 'stats': stats}
 
     if record_type_filter in ('arrest', 'all') and arrest_type:
-        qs = PoliceLog.objects.filter(record_type=arrest_type)
-        gaps, stats = _find_gaps(qs, start_date, end_date)
+        gaps, stats = _find_gaps(_base_qs(arrest_type), start_date, end_date)
         arrest_result = {'gaps': gaps, 'stats': stats}
 
     context = {
@@ -313,5 +327,7 @@ def report_data_gaps(request):
         'record_type_filter': record_type_filter,
         'start_date': start_date.isoformat() if start_date else '',
         'end_date': end_date.isoformat() if end_date else '',
+        'all_municipalities': all_municipalities,
+        'selected_muni_ids': [str(i) for i in selected_muni_ids],
     }
     return render(request, 'log_query_site/reports/data_gaps.html', context)

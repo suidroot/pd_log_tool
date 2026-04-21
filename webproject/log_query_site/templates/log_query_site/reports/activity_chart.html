@@ -12,28 +12,42 @@
 <!-- Filter -->
 <div class="card" style="margin-bottom:24px;">
   <form method="get" action="">
-    <div class="grid-2" style="align-items:end; gap:16px;">
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <div class="grid-2" style="align-items:end; gap:16px;">
+        <div class="form-group" style="margin:0;">
+          <span class="field-label">Record Type</span>
+          <div class="radio-group" style="flex-direction:row; gap:20px; margin-top:6px;">
+            <label><input type="radio" name="record_type" value="all"      {% if record_type_filter == "all" %}checked{% endif %}> All</label>
+            <label><input type="radio" name="record_type" value="dispatch" {% if record_type_filter == "dispatch" %}checked{% endif %}> Dispatch</label>
+            <label><input type="radio" name="record_type" value="arrest"   {% if record_type_filter == "arrest" %}checked{% endif %}> Arrest</label>
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+          <div class="form-group" style="margin:0; flex:1; min-width:140px;">
+            <label for="start_date">From</label>
+            <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
+          </div>
+          <div class="form-group" style="margin:0; flex:1; min-width:140px;">
+            <label for="end_date">To</label>
+            <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
+          </div>
+        </div>
+      </div>
+      {% if all_municipalities|length > 1 %}
       <div class="form-group" style="margin:0;">
-        <span class="field-label">Record Type</span>
-        <div class="radio-group" style="flex-direction:row; gap:20px; margin-top:6px;">
-          <label><input type="radio" name="record_type" value="all"      {% if record_type_filter == "all" %}checked{% endif %}> All</label>
-          <label><input type="radio" name="record_type" value="dispatch" {% if record_type_filter == "dispatch" %}checked{% endif %}> Dispatch</label>
-          <label><input type="radio" name="record_type" value="arrest"   {% if record_type_filter == "arrest" %}checked{% endif %}> Arrest</label>
+        <span class="field-label">Municipality <small style="font-weight:400;text-transform:none;letter-spacing:0;">(leave blank for all)</small></span>
+        <div class="radio-group" style="flex-direction:row; flex-wrap:wrap; gap:16px; margin-top:6px;">
+          {% for muni in all_municipalities %}
+          <label>
+            <input type="checkbox" name="municipality" value="{{ muni.id }}"
+              {% if muni.id|stringformat:"s" in selected_muni_ids %}checked{% endif %}>
+            {{ muni.display_text }}
+          </label>
+          {% endfor %}
         </div>
       </div>
-      <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
-        <div class="form-group" style="margin:0; flex:1; min-width:140px;">
-          <label for="start_date">From</label>
-          <input type="date" id="start_date" name="start_date" value="{{ start_date }}">
-        </div>
-        <div class="form-group" style="margin:0; flex:1; min-width:140px;">
-          <label for="end_date">To</label>
-          <input type="date" id="end_date" name="end_date" value="{{ end_date }}">
-        </div>
-        <div style="padding-bottom:1px;">
-          <input type="submit" value="Generate">
-        </div>
-      </div>
+      {% endif %}
+      <div><input type="submit" value="Generate"></div>
     </div>
   </form>
 </div>

@@ -7,6 +7,26 @@
 {% block content %}
 <h1>Database Statistics</h1>
 
+{% if all_municipalities|length > 1 %}
+<div class="card" style="margin-bottom:24px;">
+  <form method="get" action="">
+    <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+      <span class="field-label" style="margin:0;">Municipality <small style="font-weight:400;text-transform:none;letter-spacing:0;">(leave blank for all)</small></span>
+      <div class="radio-group" style="flex-direction:row; flex-wrap:wrap; gap:16px;">
+        {% for muni in all_municipalities %}
+        <label>
+          <input type="checkbox" name="municipality" value="{{ muni.id }}"
+            {% if muni.id|stringformat:"s" in selected_muni_ids %}checked{% endif %}>
+          {{ muni.display_text }}
+        </label>
+        {% endfor %}
+      </div>
+      <input type="submit" value="Filter">
+    </div>
+  </form>
+</div>
+{% endif %}
+
 <div class="grid-2">
   <div class="card">
     <h2>Record Counts</h2>

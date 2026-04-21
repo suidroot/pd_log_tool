@@ -47,39 +47,39 @@ def index(request):
 
 @login_required
 def about_page(request):
+    all_municipalities = Municipality.objects.order_by("display_text")
+    selected_muni_ids = request.GET.getlist("municipality") or []
 
-    municipalities = Municipality.objects.count()
-    arrest_types = ArrestType.objects.count()
-    officers = Officer.objects.count()
-    arrestees = Arrestee.objects.count()
-    charges = Charge.objects.count()
-    dispatch_types = DispatchType.objects.count()
-
-    all_count = PoliceLog.objects.count()
-    geocoded_count = PoliceLog.objects.filter(latitude__isnull=True).count()
+    base_qs = PoliceLog.objects.all()
+    if selected_muni_ids:
+        base_qs = base_qs.filter(municipality__in=selected_muni_ids)
 
     dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
-    arrest_type = RecordType.objects.filter(display_text='Arrest').first()
+    arrest_type   = RecordType.objects.filter(display_text='Arrest').first()
 
-    dispatches = PoliceLog.objects.filter(record_type=dispatch_type) if dispatch_type else PoliceLog.objects.none()
-    arrests = PoliceLog.objects.filter(record_type=arrest_type) if arrest_type else PoliceLog.objects.none()
+    dispatches = base_qs.filter(record_type=dispatch_type) if dispatch_type else PoliceLog.objects.none()
+    arrests    = base_qs.filter(record_type=arrest_type)   if arrest_type   else PoliceLog.objects.none()
 
     counts = {
-        "all_records": all_count,
-        "geocoded_records": geocoded_count,
-        'municipalities': municipalities,
-        'arrest_types': arrest_types,
-        'officers': officers,
-        'arrestees': arrestees,
-        'charges': charges,
-        'dispatch_types': dispatch_types,
+        "all_records":        base_qs.count(),
+        "geocoded_records":   base_qs.filter(latitude__isnull=True).count(),
+        'municipalities':     Municipality.objects.count(),
+        'arrest_types':       ArrestType.objects.count(),
+        'officers':           Officer.objects.count(),
+        'arrestees':          Arrestee.objects.count(),
+        'charges':            Charge.objects.count(),
+        'dispatch_types':     DispatchType.objects.count(),
         'latest_dispatch_date': dispatches.order_by('-datetime_start').values_list('datetime_start', flat=True).first(),
-        'first_dispatch_date': dispatches.order_by('datetime_start').values_list('datetime_start', flat=True).first(),
-        'latest_arrest_date': arrests.order_by('-datetime_start').values_list('datetime_start', flat=True).first(),
-        'first_arrest_date': arrests.order_by('datetime_start').values_list('datetime_start', flat=True).first(),
+        'first_dispatch_date':  dispatches.order_by('datetime_start').values_list('datetime_start', flat=True).first(),
+        'latest_arrest_date':   arrests.order_by('-datetime_start').values_list('datetime_start', flat=True).first(),
+        'first_arrest_date':    arrests.order_by('datetime_start').values_list('datetime_start', flat=True).first(),
     }
 
-    context = {"counts": counts}
+    context = {
+        "counts": counts,
+        "all_municipalities": all_municipalities,
+        "selected_muni_ids": [str(i) for i in selected_muni_ids],
+    }
     return render(request, "log_query_site/about.html", context)
 
 
@@ -206,14 +206,15 @@ def _filter_queryset(raw):
     datetime_stop_start  = _parse_datetime(raw.get("datetime_stop_start",  ""), fmt)
     datetime_stop_stop   = _parse_datetime(raw.get("datetime_stop_stop",   ""), fmt)
 
-    dispatch_type_id = raw.get("dispatch_type") or None
-    officer_id       = raw.get("officer")        or None
-    address          = raw.get("address")        or None
-    charge           = raw.getlist("charge")     or None
-    arrestee_id      = raw.get("arrestee")       or None
-    arrestee_last    = raw.get("arrestee_last")  or None
-    arrest_type_id   = raw.get("arrest_type")    or None
-    record_type      = raw.get("record_type")    or None
+    dispatch_type_id = raw.get("dispatch_type")  or None
+    officer_id       = raw.get("officer")         or None
+    address          = raw.get("address")         or None
+    charge           = raw.getlist("charge")      or None
+    arrestee_id      = raw.get("arrestee")        or None
+    arrestee_last    = raw.get("arrestee_last")   or None
+    arrest_type_id   = raw.get("arrest_type")     or None
+    record_type      = raw.get("record_type")     or None
+    municipalities   = raw.getlist("municipality") or None
 
     results = PoliceLog.objects.all()
 
@@ -239,6 +240,8 @@ def _filter_queryset(raw):
         results = results.filter(arrest_type=arrest_type_id)
     if address:
         results = results.filter(address__icontains=address)
+    if municipalities:
+        results = results.filter(municipality__in=municipalities)
 
     sort = raw.get("sort_radio", "datetime_start")
     direction = raw.get("sort_direction", "desc")
