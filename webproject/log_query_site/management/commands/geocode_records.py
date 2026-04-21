@@ -21,7 +21,25 @@ class Command(BaseCommand):
 
         ok = 0
         fail = 0
+        reused = 0
         for i, record in enumerate(qs, 1):
+            existing = (
+                PoliceLog.objects
+                .filter(address=record.address, latitude__isnull=False)
+                .exclude(pk=record.pk)
+                .values("latitude", "longitude")
+                .first()
+            )
+            if existing:
+                record.latitude = existing["latitude"]
+                record.longitude = existing["longitude"]
+                record.save(update_fields=["latitude", "longitude"])
+                reused += 1
+                ok += 1
+                if i % 50 == 0:
+                    self.stdout.write(f"  {i}/{total} processed ({ok} ok [{reused} reused], {fail} failed)")
+                continue
+
             coords = geocode_address(record.address)
             if coords:
                 record.latitude, record.longitude = coords
@@ -31,9 +49,9 @@ class Command(BaseCommand):
                 fail += 1
 
             if i % 50 == 0:
-                self.stdout.write(f"  {i}/{total} processed ({ok} ok, {fail} failed)")
+                self.stdout.write(f"  {i}/{total} processed ({ok} ok [{reused} reused], {fail} failed)")
 
             # Nominatim rate limit: max 1 request/second
             time.sleep(1.1)
 
-        self.stdout.write(self.style.SUCCESS(f"Done: {ok} geocoded, {fail} failed out of {total}"))
+        self.stdout.write(self.style.SUCCESS(f"Done: {ok} geocoded ({reused} reused from existing), {fail} failed out of {total}"))
