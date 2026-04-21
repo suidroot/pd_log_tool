@@ -1,3 +1,4 @@
+import re
 import requests
 from typing import Optional, Tuple
 
@@ -13,9 +14,20 @@ class GeocoderRateLimited(Exception):
     """Raised on HTTP 429 — task should retry once with a long delay then give up."""
 
 
+def _normalize_address(address: str) -> str:
+    # Strip sub-unit suffix (e.g. "134 Congress St,Ste 1" → "134 Congress St")
+    address = re.split(r",", address, maxsplit=1)[0].strip()
+    return address
+
+
 def geocode_address(address: str, city: str = "Portland", state: str = "ME") -> Optional[Tuple[float, float]]:
-    """Return (lat, lon), None if address not found, or raise on transient/rate-limit errors."""
-    query = f"{address}, {city}, {state}"
+    """Return (lat, lon), None if address not found, or raise on transient/rate-limit errors.
+
+    Handles intersections (e.g. "Riverside St/Forest Ave") and sub-unit suffixes
+    (e.g. "134 Congress St,Ste 1") by normalizing the address before querying.
+    """
+    street = _normalize_address(address)
+    query = f"{street}, {city}, {state}"
     try:
         resp = requests.get(
             NOMINATIM_URL,
