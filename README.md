@@ -140,7 +140,7 @@ Records are geocoded against the OpenStreetMap Nominatim API to enable the map v
 
 Geocoding happens **automatically and asynchronously** via Celery whenever a new record is ingested. If the queue is unavailable at import time, the record is saved without coordinates and can be geocoded later.
 
-Before calling Nominatim, the task checks whether another record at the same address is already geocoded and reuses those coordinates — minimising API calls.
+Before calling Nominatim, the task checks whether another record at the same address is already geocoded and reuses those coordinates — minimising API calls. The policies are located at https://operations.osmfoundation.org/policies/nominatim/
 
 **Bulk-geocode existing records** (run from `webproject/`):
 
