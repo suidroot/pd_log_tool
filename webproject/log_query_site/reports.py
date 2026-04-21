@@ -9,6 +9,7 @@ from django.shortcuts import render
 
 import redis as redis_client
 
+from django.db.models import Subquery, OuterRef
 from .models import PoliceLog, RecordType, GeocodeError
 from .geocoder_control import is_paused
 
@@ -182,18 +183,48 @@ def report_ungeocoded(request):
     from django.core.paginator import Paginator
 
     record_type_filter = request.GET.get('record_type', 'all')
+    error_filter = request.GET.get('error_filter', 'all')
 
     dispatch_type = RecordType.objects.filter(display_text='Dispatch').first()
     arrest_type = RecordType.objects.filter(display_text='Arrest').first()
 
-    qs = PoliceLog.objects.filter(latitude__isnull=True).select_related(
-        'record_type', 'officer', 'arrestee', 'dispatch_type', 'arrest_type'
-    ).order_by('-datetime_start')
+    valid_error_types = {et for et, _ in GeocodeError.ERROR_TYPE_CHOICES}
+
+    latest_error_type_qs = (
+        GeocodeError.objects
+        .filter(record=OuterRef('pk'))
+        .order_by('-attempted_at')
+        .values('error_type')[:1]
+    )
+    latest_error_at_qs = (
+        GeocodeError.objects
+        .filter(record=OuterRef('pk'))
+        .order_by('-attempted_at')
+        .values('attempted_at')[:1]
+    )
+
+    qs = (
+        PoliceLog.objects
+        .filter(latitude__isnull=True)
+        .select_related('record_type', 'officer', 'arrestee', 'dispatch_type', 'arrest_type')
+        .annotate(
+            latest_error_type=Subquery(latest_error_type_qs),
+            latest_error_at=Subquery(latest_error_at_qs),
+        )
+        .order_by('-datetime_start')
+    )
 
     if record_type_filter == 'dispatch' and dispatch_type:
         qs = qs.filter(record_type=dispatch_type)
     elif record_type_filter == 'arrest' and arrest_type:
         qs = qs.filter(record_type=arrest_type)
+
+    if error_filter == 'no_error':
+        qs = qs.filter(latest_error_type__isnull=True)
+    elif error_filter == 'has_error':
+        qs = qs.filter(latest_error_type__isnull=False)
+    elif error_filter in valid_error_types:
+        qs = qs.filter(latest_error_type=error_filter)
 
     total = qs.count()
     paginator = Paginator(qs, 100)
@@ -204,32 +235,10 @@ def report_ungeocoded(request):
         'page_obj': page,
         'total': total,
         'record_type_filter': record_type_filter,
-    }
-    return render(request, 'log_query_site/reports/ungeocoded.html', context)
-
-
-@login_required
-def report_geocode_errors(request):
-    from django.core.paginator import Paginator
-
-    error_type_filter = request.GET.get('error_type', 'all')
-
-    qs = GeocodeError.objects.select_related('record')
-    if error_type_filter != 'all':
-        qs = qs.filter(error_type=error_type_filter)
-
-    total = qs.count()
-    paginator = Paginator(qs, 100)
-    page = paginator.get_page(request.GET.get('page'))
-
-    context = {
-        'errors': page,
-        'page_obj': page,
-        'total': total,
-        'error_type_filter': error_type_filter,
+        'error_filter': error_filter,
         'error_type_choices': GeocodeError.ERROR_TYPE_CHOICES,
     }
-    return render(request, 'log_query_site/reports/geocode_errors.html', context)
+    return render(request, 'log_query_site/reports/ungeocoded.html', context)
 
 
 @login_required

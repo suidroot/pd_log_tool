@@ -9,29 +9,42 @@
   <a href="/reports/" style="color:var(--text-muted); font-size:14px;">← All Reports</a>
 </div>
 
-<!-- Filter + Queue All -->
+<!-- Filters + Queue All -->
 <div class="card" style="margin-bottom:24px;">
-  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
-    <form method="get" action="">
+  <form method="get" action="">
+    <div style="display:flex; flex-direction:column; gap:12px;">
       <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-        <span class="field-label" style="margin:0;">Record Type</span>
+        <span class="field-label" style="margin:0; min-width:90px;">Record Type</span>
         <div class="radio-group" style="flex-direction:row; gap:20px;">
           <label><input type="radio" name="record_type" value="all"      {% if record_type_filter == "all" %}checked{% endif %}> All</label>
           <label><input type="radio" name="record_type" value="dispatch" {% if record_type_filter == "dispatch" %}checked{% endif %}> Dispatch</label>
           <label><input type="radio" name="record_type" value="arrest"   {% if record_type_filter == "arrest" %}checked{% endif %}> Arrest</label>
         </div>
-        <input type="submit" value="Filter">
       </div>
-    </form>
-    {% if total > 0 %}
-    <button id="queue-all-btn" onclick="queueAll(this)">Queue All for Geocoding</button>
-    {% endif %}
-  </div>
+      <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+        <span class="field-label" style="margin:0; min-width:90px;">Geocode Status</span>
+        <div class="radio-group" style="flex-direction:row; gap:20px;">
+          <label><input type="radio" name="error_filter" value="all"       {% if error_filter == "all" %}checked{% endif %}> All</label>
+          <label><input type="radio" name="error_filter" value="no_error"  {% if error_filter == "no_error" %}checked{% endif %}> Never attempted</label>
+          <label><input type="radio" name="error_filter" value="has_error" {% if error_filter == "has_error" %}checked{% endif %}> Has error</label>
+          {% for value, label in error_type_choices %}
+          <label><input type="radio" name="error_filter" value="{{ value }}" {% if error_filter == value %}checked{% endif %}> {{ label }}</label>
+          {% endfor %}
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <input type="submit" value="Filter">
+        {% if total > 0 %}
+        <button type="button" id="queue-all-btn" onclick="queueAll(this)">Queue All {{ total }} for Geocoding</button>
+        {% endif %}
+      </div>
+    </div>
+  </form>
 </div>
 
 {% if total == 0 %}
 <div class="card" style="text-align:center; color:#2d8a4e; padding:32px; font-weight:600;">
-  All records have been geocoded.
+  No un-geocoded records match this filter.
 </div>
 {% else %}
 <div class="card" style="padding:0;">
@@ -42,24 +55,28 @@
           <th>ID</th>
           <th>Type</th>
           <th>Date / Start</th>
-          <th>Dispatch #</th>
-          <th>Call Type</th>
-          <th>Arrest Type</th>
-          <th>Officer</th>
           <th>Address</th>
+          <th>Last Error</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
         {% for r in records %}
-        <tr>
+        <tr id="row-{{ r.id }}">
           <td>{{ r.id }}</td>
           <td>{{ r.record_type }}</td>
           <td style="white-space:nowrap;">{{ r.datetime_start|default:"—" }}</td>
-          <td>{{ r.dispatch_number|default:"—" }}</td>
-          <td>{{ r.dispatch_type|default:"—" }}</td>
-          <td>{{ r.arrest_type|default:"—" }}</td>
-          <td style="white-space:nowrap;">{{ r.officer }}</td>
           <td>{{ r.address }}</td>
+          <td>
+            {% if r.latest_error_type %}
+              <span class="badge" title="{{ r.latest_error_at|date:'Y-m-d H:i' }}">{{ r.latest_error_type|title|cut:"_" }}</span>
+            {% else %}
+              <span style="color:var(--text-muted);">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <button onclick="queueOne(this, {{ r.id }})" data-id="{{ r.id }}">Queue</button>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -67,17 +84,16 @@
   </div>
 </div>
 
-<!-- Pagination -->
 {% if page_obj.paginator.num_pages > 1 %}
 <div style="display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap;">
   {% if page_obj.has_previous %}
-    <a href="?record_type={{ record_type_filter }}&page={{ page_obj.previous_page_number }}">&laquo; Prev</a>
+    <a href="?record_type={{ record_type_filter }}&error_filter={{ error_filter }}&page={{ page_obj.previous_page_number }}">&laquo; Prev</a>
   {% endif %}
   <span style="color:var(--text-muted);">
     Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
   </span>
   {% if page_obj.has_next %}
-    <a href="?record_type={{ record_type_filter }}&page={{ page_obj.next_page_number }}">Next &raquo;</a>
+    <a href="?record_type={{ record_type_filter }}&error_filter={{ error_filter }}&page={{ page_obj.next_page_number }}">Next &raquo;</a>
   {% endif %}
 </div>
 {% endif %}
@@ -85,27 +101,47 @@
 {% endif %}
 
 <script>
-function queueAll(btn) {
-  if (!confirm('Queue all {{ total }} un-geocoded records for geocoding?')) return;
+const CSRF = '{{ csrf_token }}';
+
+function queueOne(btn, id) {
   btn.disabled = true;
-  btn.textContent = 'Queuing…';
-  fetch('{% url "queue_all_ungeocoded" %}', {
+  btn.textContent = '…';
+  fetch('/records/' + id + '/geocode/', {
     method: 'POST',
-    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+    headers: {'X-CSRFToken': CSRF},
   })
   .then(r => r.json())
   .then(data => {
     if (data.status === 'queued') {
-      btn.textContent = data.queued + ' records queued';
+      btn.textContent = 'Queued';
+    } else if (data.status === 'already_geocoded') {
+      btn.textContent = 'Done';
+    } else {
+      btn.textContent = 'Error';
+      btn.disabled = false;
+    }
+  })
+  .catch(() => { btn.textContent = 'Failed'; btn.disabled = false; });
+}
+
+function queueAll(btn) {
+  if (!confirm('Queue all ' + {{ total }} + ' un-geocoded records for geocoding?')) return;
+  btn.disabled = true;
+  btn.textContent = 'Queuing…';
+  fetch('{% url "queue_all_ungeocoded" %}', {
+    method: 'POST',
+    headers: {'X-CSRFToken': CSRF},
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'queued') {
+      btn.textContent = data.queued + ' queued';
     } else {
       btn.textContent = 'Error: ' + (data.message || 'unknown');
       btn.disabled = false;
     }
   })
-  .catch(() => {
-    btn.textContent = 'Request failed';
-    btn.disabled = false;
-  });
+  .catch(() => { btn.textContent = 'Failed'; btn.disabled = false; });
 }
 </script>
 {% endblock %}

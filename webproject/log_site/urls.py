@@ -38,7 +38,6 @@ urlpatterns = [
     path('reports/activity/', reports.report_activity_chart, name='report_activity_chart'),
     path('reports/ungeocoded/', reports.report_ungeocoded, name='report_ungeocoded'),
     path('reports/geocode-queue/', reports.report_geocode_queue, name='report_geocode_queue'),
-    path('reports/geocode-errors/', reports.report_geocode_errors, name='report_geocode_errors'),
     path("accounts/", include("django.contrib.auth.urls")),
 ]
 
